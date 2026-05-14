@@ -54,7 +54,12 @@ class ExecutionLock
         }
 
         // Mirror into the transient cache so REST's get_transient() sees the lock.
-        set_transient(self::TRANSIENT_KEY, $token, self::TTL);
+        // If set_transient() fails (e.g. DB error), roll back the option row to avoid
+        // a permanently stuck lock with no transient TTL cleanup path.
+        if (!set_transient(self::TRANSIENT_KEY, $token, self::TTL)) {
+            delete_option(self::OPTION_KEY);
+            return false;
+        }
 
         self::$ownerToken = $token;
         return true;
