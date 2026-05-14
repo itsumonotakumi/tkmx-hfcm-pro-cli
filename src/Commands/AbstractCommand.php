@@ -10,6 +10,7 @@ use Tkmx\HfcmCli\Console\ExitCode;
 use Tkmx\HfcmCli\Console\Output;
 use Tkmx\HfcmCli\Support\CliAudit;
 use Tkmx\HfcmCli\Support\ExecutionLock;
+use Tkmx\HfcmCli\Support\PayloadException;
 use Tkmx\HfcmCli\Support\WpErrorFormatter;
 
 abstract class AbstractCommand
@@ -78,6 +79,14 @@ abstract class AbstractCommand
         $exitCode = ExitCode::INTERNAL;
         try {
             $exitCode = $this->execute($args);
+        } catch (PayloadException $e) {
+            // PayloadException carries its own exit code (ERROR or USAGE).
+            // Must be caught before \Throwable to avoid being swallowed as INTERNAL.
+            $this->output->error(
+                ['code' => 'payload_error', 'message' => $e->getMessage()],
+                $e->getMessage()
+            );
+            $exitCode = $e->getExitCode();
         } catch (\Throwable $e) {
             $this->output->error(
                 ['code' => 'internal_error', 'message' => $e->getMessage()],

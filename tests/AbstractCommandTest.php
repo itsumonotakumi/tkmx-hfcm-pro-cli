@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 use Tkmx\HfcmCli\Commands\AbstractCommand;
 use Tkmx\HfcmCli\Console\Args;
 use Tkmx\HfcmCli\Console\ExitCode;
+use Tkmx\HfcmCli\Support\PayloadException;
 
 /**
  * Minimal concrete subclass for testing AbstractCommand behaviour.
@@ -142,5 +143,44 @@ class AbstractCommandTest extends TestCase
         ob_end_clean();
 
         $this->assertSame(ExitCode::OK, $code);
+    }
+
+    public function testPayloadExceptionUsageCodePreserved(): void
+    {
+        // PayloadException with USAGE exit code must NOT be swallowed as INTERNAL.
+        // Regression test for AbstractCommand::catch(PayloadException) ordering.
+        $args = new Args([]);
+        $cmd  = new class($args) extends AbstractCommand {
+            protected function commandName(): string { return 'test:payload-usage'; }
+            protected function execute(Args $args): int
+            {
+                throw new PayloadException('no source provided', ExitCode::USAGE);
+            }
+        };
+
+        ob_start();
+        $code = $cmd->run($args);
+        ob_end_clean();
+
+        $this->assertSame(ExitCode::USAGE, $code);
+    }
+
+    public function testPayloadExceptionErrorCodePreserved(): void
+    {
+        // PayloadException with ERROR exit code must return ERROR, not INTERNAL.
+        $args = new Args([]);
+        $cmd  = new class($args) extends AbstractCommand {
+            protected function commandName(): string { return 'test:payload-error'; }
+            protected function execute(Args $args): int
+            {
+                throw new PayloadException('invalid JSON', ExitCode::ERROR);
+            }
+        };
+
+        ob_start();
+        $code = $cmd->run($args);
+        ob_end_clean();
+
+        $this->assertSame(ExitCode::ERROR, $code);
     }
 }

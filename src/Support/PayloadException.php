@@ -16,7 +16,8 @@ class PayloadException extends \RuntimeException
         string $message,
         private readonly int $exitCode = ExitCode::ERROR,
     ) {
-        parent::__construct($message);
+        // Pass exitCode as the $code argument so PHPUnit's expectExceptionCode() works.
+        parent::__construct($message, $exitCode);
     }
 
     public function getExitCode(): int
