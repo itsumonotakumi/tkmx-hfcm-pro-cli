@@ -11,6 +11,7 @@ use Tkmx\HfcmCli\Console\Output;
 use Tkmx\HfcmCli\Support\CliAudit;
 use Tkmx\HfcmCli\Support\ExecutionLock;
 use Tkmx\HfcmCli\Support\PayloadException;
+use Tkmx\HfcmCli\Support\PayloadLoader;
 use Tkmx\HfcmCli\Support\WpErrorFormatter;
 
 abstract class AbstractCommand
@@ -76,9 +77,11 @@ abstract class AbstractCommand
             $locked = true;
         }
 
-        $exitCode = ExitCode::INTERNAL;
+        $exitCode    = ExitCode::INTERNAL;
+        $payloadMeta = null;
         try {
-            $exitCode = $this->execute($args);
+            $exitCode    = $this->execute($args);
+            $payloadMeta = PayloadLoader::consumeLastMeta();
         } catch (PayloadException $e) {
             // PayloadException carries its own exit code (ERROR or USAGE).
             // Must be caught before \Throwable to avoid being swallowed as INTERNAL.
@@ -99,7 +102,8 @@ abstract class AbstractCommand
             }
         }
 
-        $audit->finish($exitCode);
+        $summary = $payloadMeta !== null ? ['payload_meta' => $payloadMeta] : [];
+        $audit->finish($exitCode, $summary);
         return $exitCode;
     }
 

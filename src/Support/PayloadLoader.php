@@ -19,6 +19,28 @@ use Tkmx\HfcmCli\Console\ExitCode;
 class PayloadLoader
 {
     /**
+     * Metadata about the last successfully loaded payload.
+     * Populated by load(); consumed by AbstractCommand via consumeLastMeta().
+     * Keys: bytes (int), sha256 (string).
+     *
+     * @var array{bytes: int, sha256: string}|null
+     */
+    private static ?array $lastMeta = null;
+
+    /**
+     * Return and clear the payload metadata recorded during the last load() call.
+     * Returns null if load() has not been called or if it threw.
+     *
+     * @return array{bytes: int, sha256: string}|null
+     */
+    public static function consumeLastMeta(): ?array
+    {
+        $meta = self::$lastMeta;
+        self::$lastMeta = null;
+        return $meta;
+    }
+
+    /**
      * Load JSON payload from --data, --file, or STDIN (-).
      * Returns decoded array on success, throws PayloadException on error.
      *
@@ -27,6 +49,7 @@ class PayloadLoader
      */
     public static function load(Args $args): array
     {
+        self::$lastMeta = null;
         // Priority 1: --data=<json>
         if ($args->has('data')) {
             $raw = $args->getString('data');
@@ -107,6 +130,7 @@ class PayloadLoader
 
     /**
      * JSON decode; throws PayloadException on error.
+     * On success, populates $lastMeta with bytes and sha256 of raw input.
      *
      * @return array<string, mixed>
      * @throws PayloadException
@@ -120,6 +144,10 @@ class PayloadLoader
                 ExitCode::ERROR
             );
         }
+        self::$lastMeta = [
+            'bytes'  => strlen($raw),
+            'sha256' => hash('sha256', $raw),
+        ];
         return $decoded;
     }
 }
