@@ -1,0 +1,309 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1778752009384,
+  "projectRoot": "/home/isabro/dev/tkmx-hfcm-pro-cli",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "bin",
+      "src",
+      "tests"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "bin": {
+      "path": "bin",
+      "purpose": "Executable scripts",
+      "fileCount": 1,
+      "lastAccessed": 1778752009379,
+      "keyFiles": [
+        "hfcm"
+      ]
+    },
+    "config": {
+      "path": "config",
+      "purpose": "Configuration files",
+      "fileCount": 1,
+      "lastAccessed": 1778752009382,
+      "keyFiles": [
+        "cli.sample.php"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 2,
+      "lastAccessed": 1778752009382,
+      "keyFiles": [
+        "Bootstrap.php",
+        "Router.php"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 9,
+      "lastAccessed": 1778752009383,
+      "keyFiles": [
+        "AbstractCommandTest.php",
+        "ArgsTest.php",
+        "ExecutionLockTest.php",
+        "ExitCodeTest.php",
+        "OutputTest.php"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/Bootstrap.php",
+      "accessCount": 16,
+      "lastAccessed": 1778759069107,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/AbstractCommand.php",
+      "accessCount": 11,
+      "lastAccessed": 1778759110756,
+      "type": "file"
+    },
+    {
+      "path": "src/Support/PayloadLoader.php",
+      "accessCount": 10,
+      "lastAccessed": 1778759167788,
+      "type": "file"
+    },
+    {
+      "path": "src/Console/Args.php",
+      "accessCount": 8,
+      "lastAccessed": 1778759085103,
+      "type": "file"
+    },
+    {
+      "path": "src/Console/Output.php",
+      "accessCount": 7,
+      "lastAccessed": 1778759093788,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsExport.php",
+      "accessCount": 7,
+      "lastAccessed": 1778759149069,
+      "type": "file"
+    },
+    {
+      "path": "src/Support/ExecutionLock.php",
+      "accessCount": 7,
+      "lastAccessed": 1778759190707,
+      "type": "file"
+    },
+    {
+      "path": "src/Support/CliAudit.php",
+      "accessCount": 7,
+      "lastAccessed": 1778759206580,
+      "type": "file"
+    },
+    {
+      "path": "config/cli.sample.php",
+      "accessCount": 6,
+      "lastAccessed": 1778759026130,
+      "type": "file"
+    },
+    {
+      "path": "bin/hfcm",
+      "accessCount": 6,
+      "lastAccessed": 1778759030250,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 5,
+      "lastAccessed": 1778759011534,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/test-report-v2.json",
+      "accessCount": 4,
+      "lastAccessed": 1778756251069,
+      "type": "file"
+    },
+    {
+      "path": "tests/bootstrap.php",
+      "accessCount": 4,
+      "lastAccessed": 1778756509154,
+      "type": "file"
+    },
+    {
+      "path": "tests/AbstractCommandTest.php",
+      "accessCount": 4,
+      "lastAccessed": 1778756582200,
+      "type": "file"
+    },
+    {
+      "path": "src/Router.php",
+      "accessCount": 4,
+      "lastAccessed": 1778759074900,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsUpdate.php",
+      "accessCount": 4,
+      "lastAccessed": 1778759121926,
+      "type": "file"
+    },
+    {
+      "path": "src/Support/PayloadException.php",
+      "accessCount": 4,
+      "lastAccessed": 1778759172441,
+      "type": "file"
+    },
+    {
+      "path": "src/Support/WpErrorFormatter.php",
+      "accessCount": 4,
+      "lastAccessed": 1778759212633,
+      "type": "file"
+    },
+    {
+      "path": "tests/CliAuditTest.php",
+      "accessCount": 3,
+      "lastAccessed": 1778756565347,
+      "type": "file"
+    },
+    {
+      "path": "DESIGN.md",
+      "accessCount": 3,
+      "lastAccessed": 1778758981155,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsCreate.php",
+      "accessCount": 3,
+      "lastAccessed": 1778759004666,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsBulkUpsert.php",
+      "accessCount": 3,
+      "lastAccessed": 1778759005499,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsImport.php",
+      "accessCount": 3,
+      "lastAccessed": 1778759005672,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsDelete.php",
+      "accessCount": 3,
+      "lastAccessed": 1778759132449,
+      "type": "file"
+    },
+    {
+      "path": "tests/ExecutionLockTest.php",
+      "accessCount": 2,
+      "lastAccessed": 1778752084876,
+      "type": "file"
+    },
+    {
+      "path": "tests/PayloadLoaderTest.php",
+      "accessCount": 2,
+      "lastAccessed": 1778752270286,
+      "type": "file"
+    },
+    {
+      "path": "src/Console/ExitCode.php",
+      "accessCount": 2,
+      "lastAccessed": 1778759001622,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/review-report.json",
+      "accessCount": 1,
+      "lastAccessed": 1778752064523,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/dev-fix-report.json",
+      "accessCount": 1,
+      "lastAccessed": 1778752064931,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/test-report.json",
+      "accessCount": 1,
+      "lastAccessed": 1778752078932,
+      "type": "file"
+    },
+    {
+      "path": "tests/RouterTest.php",
+      "accessCount": 1,
+      "lastAccessed": 1778752082975,
+      "type": "file"
+    },
+    {
+      "path": "phpunit.xml",
+      "accessCount": 1,
+      "lastAccessed": 1778752100812,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/dev-fix2-task.md",
+      "accessCount": 1,
+      "lastAccessed": 1778756247067,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/review-report-v2.json",
+      "accessCount": 1,
+      "lastAccessed": 1778756250079,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/security-report-v2.json",
+      "accessCount": 1,
+      "lastAccessed": 1778756250475,
+      "type": "file"
+    },
+    {
+      "path": ".agent-comm/dev-fix2-report.json",
+      "accessCount": 1,
+      "lastAccessed": 1778756689016,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsList.php",
+      "accessCount": 1,
+      "lastAccessed": 1778759002100,
+      "type": "file"
+    },
+    {
+      "path": "src/Commands/SnippetsGet.php",
+      "accessCount": 1,
+      "lastAccessed": 1778759002303,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

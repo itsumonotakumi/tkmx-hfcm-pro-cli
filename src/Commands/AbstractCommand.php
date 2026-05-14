@@ -18,13 +18,13 @@ abstract class AbstractCommand
 {
     protected Output $output;
 
-    /** Override to true for write commands that need the exclusive lock. */
+    /** 排他的ロックが必要な書き込みコマンドの場合、true にオーバーライド */
     protected bool $requiresLock = false;
 
     /**
-     * Minimum WP capability required.
-     * Override in subclasses for read-only commands (e.g. 'read').
-     * Bootstrap no longer enforces manage_options globally.
+     * 必要な最小 WP 権限
+     * 読み取り専用コマンド（例: 'read'）の場合はサブクラスでオーバーライド
+     * Bootstrap はもう manage_options をグローバルに強制しない
      */
     protected string $requiredCap = 'manage_options';
 
@@ -44,7 +44,7 @@ abstract class AbstractCommand
     {
         $audit = new CliAudit($this->commandName());
 
-        // Build extra audit context: unix_user, wp_user_login, impersonated_login.
+        // 追加の監査コンテキストを構築: unix_user, wp_user_login, impersonated_login
         $actorContext = Bootstrap::getActorContext() ?? [];
         $extra = array_filter([
             'unix_user'          => $actorContext['unix_user'] ?? null,
@@ -54,11 +54,11 @@ abstract class AbstractCommand
 
         $audit->start($args->toRedactedArray(), $extra);
 
-        // Per-command capability guard (replaces Bootstrap-level manage_options).
+        // コマンドごとの権限ガード（Bootstrap レベルの manage_options に置き換わる）
         if (!function_exists('current_user_can') || !current_user_can($this->requiredCap)) {
             $this->output->error(
-                ['code' => 'rest_forbidden', 'message' => 'Insufficient permissions'],
-                'Insufficient permissions (requires: ' . $this->requiredCap . ')'
+                ['code' => 'rest_forbidden', 'message' => '権限が不足しています'],
+                '権限が不足しています（必須: ' . $this->requiredCap . '）'
             );
             $audit->finish(ExitCode::FORBIDDEN);
             return ExitCode::FORBIDDEN;
@@ -68,8 +68,8 @@ abstract class AbstractCommand
         if ($this->requiresLock) {
             if (!ExecutionLock::acquire()) {
                 $this->output->error(
-                    ['code' => 'import_in_progress', 'message' => 'Another import/upsert is already running'],
-                    'Another import/upsert is already running. Please try again later.'
+                    ['code' => 'import_in_progress', 'message' => '別のインポート/アップサートが既に実行中です'],
+                    'インポート/アップサートが既に実行中です。後でもう一度お試しください。'
                 );
                 $audit->finish(ExitCode::TEMPFAIL);
                 return ExitCode::TEMPFAIL;
@@ -83,8 +83,8 @@ abstract class AbstractCommand
             $exitCode    = $this->execute($args);
             $payloadMeta = PayloadLoader::consumeLastMeta();
         } catch (PayloadException $e) {
-            // PayloadException carries its own exit code (ERROR or USAGE).
-            // Must be caught before \Throwable to avoid being swallowed as INTERNAL.
+            // PayloadException は独自の終了コード（ERROR または USAGE）を持つ
+            // Throwable の前にキャッチして INTERNAL として飲み込まれるのを避ける
             $this->output->error(
                 ['code' => 'payload_error', 'message' => $e->getMessage()],
                 $e->getMessage()
@@ -108,7 +108,7 @@ abstract class AbstractCommand
     }
 
     /**
-     * Handle a WP_Error: write JSON error output and return the mapped exit code.
+     * WP_Error を処理: JSON エラー出力を書き込み、マップされた終了コードを返す
      */
     protected function handleWpError(\WP_Error $error): int
     {

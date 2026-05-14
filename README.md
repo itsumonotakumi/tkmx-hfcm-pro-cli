@@ -1,58 +1,58 @@
 # TKMX HFCM Pro CLI
 
-Command-line interface for [TKMX HFCM Pro API](https://github.com/your-org/tkmx-hfcm-pro-api) WordPress plugin.  
-Executes bulk operations (bulk-upsert, import, export) directly on the server — no HTTP round-trips, no rate limits.
+[TKMX HFCM Pro API](https://github.com/your-org/tkmx-hfcm-pro-api) WordPressプラグイン用のコマンドラインインターフェース。  
+bulk-upsert・import・export等の大量操作をサーバー上で直実行 — HTTPラウンドトリップなし、レート制限なし。
 
-## Requirements
+## 動作要件
 
 - PHP 8.3+
-- WordPress with TKMX HFCM Pro API plugin v1.6.x active
-- SSH access to the server
-- `posix` PHP extension (for config file owner validation)
+- TKMX HFCM Pro API プラグイン v1.6.x が有効化済みのWordPress
+- サーバーへのSSHアクセス
+- `posix` PHP拡張モジュール（設定ファイル所有者検証用）
 
-## Installation
+## インストール
 
 ```bash
-# Place inside WordPress root
+# WordPressルートディレクトリ内に配置
 cd /path/to/wordpress
 git clone https://github.com/your-org/tkmx-hfcm-pro-cli.git
 
-# Make executable
+# 実行可能にする
 chmod +x tkmx-hfcm-pro-cli/bin/hfcm
 
-# Copy and configure
+# サンプル設定をコピーして編集
 cp tkmx-hfcm-pro-cli/config/cli.sample.php tkmx-hfcm-pro-cli/config/cli.local.php
 chmod 0600 tkmx-hfcm-pro-cli/config/cli.local.php
-# Edit cli.local.php and set HFCM_CLI_DEFAULT_USER to your admin login
+# cli.local.php を編集して HFCM_CLI_DEFAULT_USER に管理者のログイン名を設定
 ```
 
-## Configuration
+## 設定
 
-Edit `config/cli.local.php`:
+`config/cli.local.php` を編集：
 
 ```php
-define('HFCM_CLI_DEFAULT_USER', 'admin');  // WP user login with manage_options
+define('HFCM_CLI_DEFAULT_USER', 'admin');  // manage_options 権限を持つ WP ユーザー
 ```
 
-Or use environment variables:
+または環境変数で設定：
 
 ```bash
 export HFCM_CLI_DEFAULT_USER=admin
 ```
 
-**Security**: `config/cli.local.php` must be owned by the executing user and have mode `0600`.  
-Any other permission causes exit 4 (FORBIDDEN).
+**セキュリティ**: `config/cli.local.php` は実行ユーザーに所有され、パーミッションが `0600` である必要があります。  
+異なる権限の場合は exit 4 (FORBIDDEN) で終了します。
 
-## Usage
+## 使用方法
 
 ```bash
 cd /path/to/wordpress
 ./tkmx-hfcm-pro-cli/bin/hfcm <command> [options]
 ```
 
-### Commands
+### コマンド一覧
 
-#### List snippets
+#### スニペット一覧表示
 
 ```bash
 ./bin/hfcm snippets:list
@@ -61,14 +61,14 @@ cd /path/to/wordpress
 ./bin/hfcm snippets:list --status=active --search=header
 ```
 
-#### Get a snippet
+#### スニペットを取得
 
 ```bash
 ./bin/hfcm snippets:get 42
 ./bin/hfcm snippets:get --id=42
 ```
 
-#### Create a snippet
+#### スニペットを作成
 
 ```bash
 ./bin/hfcm snippets:create --file=snippet.json
@@ -76,153 +76,153 @@ cd /path/to/wordpress
 cat snippet.json | ./bin/hfcm snippets:create --file=-
 ```
 
-#### Update a snippet (PUT — full replace)
+#### スニペットを更新（PUT — 完全置換）
 
 ```bash
 ./bin/hfcm snippets:update 42 --file=snippet.json
 ```
 
-#### Patch a snippet (PATCH — partial update)
+#### スニペットを部分更新（PATCH — 差分更新）
 
 ```bash
 ./bin/hfcm snippets:update 42 --mode=patch --data='{"status":"inactive"}'
 ```
 
-#### Delete snippet(s)
+#### スニペットを削除
 
 ```bash
-# Single delete
+# 単一削除
 ./bin/hfcm snippets:delete --id=42
 
-# Bulk delete (max 100 IDs)
+# 一括削除（最大100件）
 ./bin/hfcm snippets:delete --ids=1,2,3,42
 ```
 
-#### Bulk upsert
+#### 一括 upsert
 
 ```bash
 ./bin/hfcm snippets:bulk-upsert --file=payload.json
-./bin/hfcm snippets:bulk-upsert --file=payload.json.gz   # gzip transparent
+./bin/hfcm snippets:bulk-upsert --file=payload.json.gz   # gzip は自動判定
 cat payload.json | ./bin/hfcm snippets:bulk-upsert --file=-
 ```
 
-#### Import
+#### インポート
 
 ```bash
 ./bin/hfcm snippets:import --file=export.json
 ./bin/hfcm snippets:import --file=export.json.gz
 ```
 
-#### Export
+#### エクスポート
 
 ```bash
-# JSON to STDOUT
+# JSON を標準出力に
 ./bin/hfcm snippets:export
 
-# CSV to file
+# CSV をファイルに
 ./bin/hfcm snippets:export --format=csv --out=backup.csv
 
-# JSON to file
+# JSON をファイルに
 ./bin/hfcm snippets:export --format=json --out=backup.json
 ```
 
-### Common Options
+### 共通オプション
 
-| Option | Description |
-|--------|-------------|
-| `--format=json\|table\|csv` | Output format (default: `json`) |
-| `--pretty` | Pretty-print JSON output |
-| `--quiet` | Suppress STDERR messages |
-| `--file=<path>` | Load payload from file (`.gz` auto-detected) |
-| `--file=-` | Load payload from STDIN |
-| `--data=<json>` | Inline JSON payload |
-| `--out=<path>` | Write output to file (export only) |
-| `--as=<user_login>` | Run as a specific WP user (requires `HFCM_CLI_ALLOW_AS=1`) |
-| `--help` | Show help |
+| オプション | 説明 |
+|--------|------|
+| `--format=json\|table\|csv` | 出力形式（デフォルト: `json`） |
+| `--pretty` | JSON 出力を見やすく整形 |
+| `--quiet` | STDERR メッセージを抑制 |
+| `--file=<path>` | ファイルからペイロードを読み込み（`.gz` は自動判定） |
+| `--file=-` | STDIN からペイロードを読み込み |
+| `--data=<json>` | JSON ペイロードをインラインで指定 |
+| `--out=<path>` | 出力をファイルに保存（エクスポート時のみ） |
+| `--as=<user_login>` | 特定の WP ユーザーとして実行（`HFCM_CLI_ALLOW_AS=1` が必要） |
+| `--help` | ヘルプを表示 |
 
-### Impersonation
+### ユーザー成り済まし
 
 ```bash
-# Enable impersonation (opt-in, every use is audit-logged)
+# ユーザー成り済ましを有効化（明示的オプトイン、全使用は監査ログに記録）
 HFCM_CLI_ALLOW_AS=1 ./bin/hfcm snippets:list --as=editor
 
-# Non-admin users are rejected for write commands (exit 4)
+# 非管理者ユーザーは書き込みコマンドで拒否される（exit 4）
 HFCM_CLI_ALLOW_AS=1 ./bin/hfcm snippets:create --as=subscriber --data='...'
 # → exit 4: Insufficient permissions
 ```
 
-### Payload Size Limits (same as REST API)
+### ペイロードサイズ上限（REST API と同じ）
 
-| Type | Limit |
-|------|-------|
-| Compressed input (`.gz`) | 5 MB |
-| Uncompressed / decompressed | 10 MB |
+| タイプ | 上限 |
+|------|------|
+| 圧縮入力（`.gz`） | 5 MB |
+| 非圧縮 / 展開後 | 10 MB |
 
-Exceeding limits → exit 1 + `payload_too_large` error.
+上限を超過 → exit 1 + `payload_too_large` エラー。
 
-## Exit Codes
+## Exit コード
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Validation / not found / payload too large |
-| 2 | wp-load.php not found |
-| 3 | TKMX HFCM Pro API plugin not active |
-| 4 | Permission denied / authentication failure |
-| 64 | Usage error (invalid arguments) |
-| 70 | Internal error |
-| 75 | Temporary failure (another import/upsert is running) |
+| コード | 意味 |
+|------|------|
+| 0 | 成功 |
+| 1 | 検証エラー / 未検出 / ペイロード超過 |
+| 2 | wp-load.php が見つからない |
+| 3 | TKMX HFCM Pro API プラグインが非活性 |
+| 4 | 権限拒否 / 認証失敗 |
+| 64 | 使用方法エラー（無効な引数） |
+| 70 | 内部エラー |
+| 75 | 一時的な障害（別の import/upsert 実行中） |
 
-## Mutual Exclusion with REST API
+## CLI と REST API の相互排他性
 
-`bulk-upsert` and `import` acquire the `hfcm_import_lock` transient (TTL 5 min), the same key used by the REST API. CLI and REST are mutually exclusive — if one is running the other exits with code 75.
+`bulk-upsert` と `import` は `hfcm_import_lock` transient（TTL 5分）を取得します。これは REST API でも使用される同じキーです。CLI と REST は相互に排他的で、一方が実行中なら他方は exit 75 で終了します。
 
-### Persistent Object Cache environments (Redis Object Cache etc.)
+### 永続オブジェクトキャッシュ環境での注意（Redis Object Cache など）
 
-When a persistent object cache (Redis, Memcached) is active, `set_transient()` called by the REST layer may write only to the cache and **not** to `wp_options`. The CLI uses `add_option()` which always writes directly to the database, so the REST layer may not observe the CLI lock via `get_transient()` if the cache doesn't fall back to the DB.
+永続オブジェクトキャッシュ（Redis・Memcached等）が有効な場合、REST層で呼び出される `set_transient()` がキャッシュのみに書き込まれ、**`wp_options` テーブルに書き込まれない** 可能性があります。一方、CLI では `add_option()` を使用するため常にデータベースに直接書き込みます。キャッシュが DB へのフォールバックを行わない場合、REST層は `get_transient()` 経由でCLIロックを見つけることができません。
 
-**Recommendation**: In Redis Object Cache or similar environments, ensure the REST layer (TKMX-HFCM-Pro-API) also uses an `add_option`-based atomic lock (follow-up PR). Until that follow-up is applied, avoid concurrent CLI and REST bulk operations in persistent-cache environments.
+**推奨対応**: Redis Object Cache 等の環境では、REST層（TKMX-HFCM-Pro-API）も `add_option` ベースのアトミックロックを使用するよう設定してください（別途PRで対応予定）。その前まで、永続キャッシュ環境では CLI と REST のbulk操作の並行実行を避けてください。
 
-## Audit Logging
+## 監査ログ
 
-Every CLI invocation is recorded in `wp_hfcm_takumi_audit_logs` with:
+全 CLI 呼び出しは `wp_hfcm_takumi_audit_logs` に以下の情報とともに記録されます：
 - `endpoint`: `cli:<command>`
-- `user_login`: active WP user
-- Impersonation details when `--as` is used
+- `user_login`: 実行中の WP ユーザー
+- `--as` 使用時の成り済まし詳細
 
-## Running Tests
+## テスト実行
 
-PHPUnit 10+ must be installed separately (composer is not required for CLI operation):
+PHPUnit 10+ を別途インストール（CLI 運用には composer 不要）：
 
 ```bash
-# Install PHPUnit globally or locally
+# PHPUnit をグローバルまたはローカルにインストール
 composer global require phpunit/phpunit:^10
 
-# Run tests (no WordPress needed — WP_Error is stubbed)
+# テストを実行（WordPress 不要 — WP_Error はスタブ化）
 phpunit --configuration phpunit.xml
 
-# Or with a local phpunit phar
+# またはローカルの phpunit phar を使用
 php phpunit.phar --configuration phpunit.xml
 ```
 
-Tests cover: `Args`, `Output`, `ExitCode`, `WpErrorFormatter`, `PayloadLoader` (including gzip and size limits).
+テスト対象: `Args`、`Output`、`ExitCode`、`WpErrorFormatter`、`PayloadLoader`（gzip・サイズ上限を含む）。
 
-## Troubleshooting
+## トラブルシューティング
 
 **`Error: wp-load.php not found`**  
-The CLI must be placed inside or adjacent to the WordPress root. It searches up to 3 parent directories.
+CLI は WordPress ルートディレクトリ内またはその近傍に配置される必要があります。最大3階層親方向を検索します。
 
 **`Error: TKMX HFCM Pro API plugin is not active`**  
-Activate the plugin in WordPress admin or via WP-CLI: `wp plugin activate hfcm-pro-takumi-api`.
+WordPress 管理画面でプラグインを有効化するか、WP-CLI で実行: `wp plugin activate hfcm-pro-takumi-api`。
 
 **`Error: config/cli.local.php must have mode 0600`**  
-Run: `chmod 0600 config/cli.local.php`
+以下を実行: `chmod 0600 config/cli.local.php`
 
 **`Error: config/cli.local.php must be owned by the current user`**  
-Ensure the file is owned by the user running the CLI: `chown $(whoami) config/cli.local.php`
+ファイルが CLI 実行ユーザーに所有されていることを確認: `chown $(whoami) config/cli.local.php`
 
-**Exit 75 (lock busy)**  
-Another `bulk-upsert` or `import` is running (via CLI or REST). Wait and retry.
+**Exit 75（ロック取得中）**  
+別の `bulk-upsert` または `import` が実行中（CLI または REST 経由）です。少し待ってからリトライしてください。
 
-**Release timing note**  
-The WP plugin runs `check_and_upgrade()` on every load. Immediately after a plugin update, the first CLI invocation may be slower. Schedule maintenance-window CLI runs after plugin upgrades.
+**リリース直後のタイミング注意**  
+WP プラグインは毎回ロード時に `check_and_upgrade()` を実行します。プラグインアップデート直後、最初の CLI 呼び出しが遅くなる可能性があります。プラグインアップグレード後の CLI 実行はメンテナンスタイム帯にスケジュールしてください。

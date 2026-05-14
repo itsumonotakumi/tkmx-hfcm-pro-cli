@@ -16,8 +16,8 @@ class SnippetsDelete extends AbstractCommand
 
     public function run(Args $args): int
     {
-        // Bulk delete (--ids) requires the execution lock; single delete (--id) does not.
-        // Mirror: REST layer does not lock on single delete either.
+        // 一括削除（--ids）は実行ロックが必要; 単一削除（--id）は不要
+        // ミラー: REST レイヤーは単一削除でもロックしない
         $this->requiresLock = $args->getString('ids') !== '';
         return parent::run($args);
     }
@@ -29,13 +29,13 @@ class SnippetsDelete extends AbstractCommand
 
         if ($singleId !== '' && $multiIds !== '') {
             $this->output->error(
-                ['code' => 'invalid_args', 'message' => 'Use --id for single delete or --ids for bulk delete, not both'],
-                'Use --id for single delete or --ids for bulk delete, not both'
+                ['code' => 'invalid_args', 'message' => '単一削除には --id、一括削除には --ids を使用してください（両方は不可）'],
+                '単一削除には --id、一括削除には --ids を使用してください（両方は不可）'
             );
             return ExitCode::USAGE;
         }
 
-        // Single delete
+        // 単一削除
         if ($singleId !== '') {
             $result = \HFCM_Takumi_API_Snippet_Service::delete_snippet((int) $singleId);
             if (is_wp_error($result)) {
@@ -45,7 +45,7 @@ class SnippetsDelete extends AbstractCommand
             return ExitCode::OK;
         }
 
-        // Bulk delete
+        // 一括削除
         if ($multiIds !== '') {
             $ids = array_filter(
                 array_map('intval', explode(',', $multiIds)),
@@ -54,16 +54,16 @@ class SnippetsDelete extends AbstractCommand
 
             if (count($ids) === 0) {
                 $this->output->error(
-                    ['code' => 'invalid_ids', 'message' => '--ids must be a comma-separated list of positive integers'],
-                    '--ids must be a comma-separated list of positive integers'
+                    ['code' => 'invalid_ids', 'message' => '--ids はカンマ区切りの正の整数のリストである必要があります'],
+                    '--ids はカンマ区切りの正の整数のリストである必要があります'
                 );
                 return ExitCode::USAGE;
             }
 
             if (count($ids) > 100) {
                 $this->output->error(
-                    ['code' => 'bulk_delete_too_large', 'message' => 'Maximum 100 IDs per bulk delete'],
-                    'Maximum 100 IDs per bulk delete'
+                    ['code' => 'bulk_delete_too_large', 'message' => '一括削除あたり最大 100 ID まで'],
+                    '一括削除あたり最大 100 ID まで'
                 );
                 return ExitCode::ERROR;
             }
@@ -87,8 +87,8 @@ class SnippetsDelete extends AbstractCommand
         }
 
         $this->output->error(
-            ['code' => 'missing_args', 'message' => 'Either --id or --ids is required'],
-            'Either --id=<id> or --ids=1,2,3 is required'
+            ['code' => 'missing_args', 'message' => '--id または --ids が必須です'],
+            '--id=<id> または --ids=1,2,3 が必須です'
         );
         return ExitCode::USAGE;
     }

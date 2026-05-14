@@ -17,7 +17,7 @@ use Tkmx\HfcmCli\Commands\SnippetsExport;
 
 class Router
 {
-    /** @var array<string, class-string> */
+    /** @var array<string, class-string> コマンド名からコマンドクラスへのマッピング */
     private array $commands = [
         'snippets:list'        => SnippetsList::class,
         'snippets:get'         => SnippetsGet::class,
@@ -31,11 +31,11 @@ class Router
     ];
 
     /**
-     * @param list<string> $argv  Full $argv including argv[0]
+     * @param list<string> $argv  argv[0] を含む完全な $argv
      */
     public function dispatch(array $argv): int
     {
-        // argv[0] = script, argv[1] = command, argv[2+] = args
+        // argv[0] = スクリプト, argv[1] = コマンド, argv[2+] = 引数
         $command = $argv[1] ?? null;
 
         if ($command === null || $command === '--help' || $command === '-h' || $command === 'help') {
@@ -44,12 +44,12 @@ class Router
         }
 
         if (!isset($this->commands[$command])) {
-            fwrite(STDERR, "Error: unknown command '{$command}'\n\n");
+            fwrite(STDERR, "エラー: 不明なコマンド '{$command}'\n\n");
             $this->printHelp();
             return ExitCode::USAGE;
         }
 
-        // Build Args from argv[2+] (skip script and command tokens).
+        // argv[2+] から Args を構築（スクリプトとコマンドトークンをスキップ）
         $argTokens = array_values(array_slice($argv, 2));
         $args      = new Args($argTokens);
 

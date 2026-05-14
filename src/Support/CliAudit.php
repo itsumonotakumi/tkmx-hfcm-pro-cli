@@ -7,11 +7,11 @@ namespace Tkmx\HfcmCli\Support;
 use Tkmx\HfcmCli\Console\Args;
 
 /**
- * Wraps HFCM_Takumi_API_Audit_Logger::log() for CLI invocations.
- * Records actor (UNIX user + WP user_login), command, redacted args, result.
+ * CLI 呼び出し用に HFCM_Takumi_API_Audit_Logger::log() をラップ
+ * アクター（UNIX ユーザー + WP user_login）、コマンド、編集済み args、結果を記録
  *
- * Only one real DB record is written: at finish() time (success or error).
- * This keeps audit logs clean — no spurious 500-status "start" entries.
+ * 実際の DB レコードは 1 つだけ書き込まれる: finish() 時点（成功またはエラー）
+ * これにより監査ログはクリーンに保たれる — 偽の 500 ステータス "start" エントリなし
  */
 class CliAudit
 {
@@ -28,14 +28,14 @@ class CliAudit
     }
 
     /**
-     * Record command start context (stored in memory; not written to DB).
+     * コマンド開始コンテキストを記録（メモリに保存; DB には書き込まない）
      *
      * @param array<string, mixed> $redactedArgs
-     * @param array<string, mixed> $extra  e.g. ['actor' => ..., 'impersonated_login' => ...]
+     * @param array<string, mixed> $extra  例: ['actor' => ..., 'impersonated_login' => ...]
      */
     public function start(array $redactedArgs, array $extra = []): void
     {
-        // Collect UNIX user and WP user_login.
+        // UNIX ユーザーと WP user_login を収集
         $unixUser = get_current_user() ?: (function_exists('posix_getlogin') ? posix_getlogin() : '');
         $wpLogin  = '';
         if (function_exists('wp_get_current_user')) {
@@ -49,22 +49,22 @@ class CliAudit
             'redacted_args' => $redactedArgs,
         ], $extra);
 
-        // No DB write here — avoids 'info' status causing 500-coded audit rows.
-        // The audit record is written once at finish().
+        // ここで DB 書き込みなし — 'info' ステータスが 500 コード監査行を引き起こすのを避ける
+        // 監査レコードは finish() で 1 回書き込まれる
         if (!class_exists('HFCM_Takumi_API_Audit_Logger')) {
-            error_log('[hfcm-cli] Warning: HFCM_Takumi_API_Audit_Logger not loaded; audit logging is disabled.');
+            error_log('[hfcm-cli] 警告: HFCM_Takumi_API_Audit_Logger が読み込まれていません; 監査ログは無効です。');
         }
     }
 
     /**
-     * Write the single audit record for this command invocation.
+     * このコマンド呼び出しの単一監査レコードを書き込む
      *
      * @param array<string, mixed> $summary
      */
     public function finish(int $exitCode, array $summary = []): void
     {
         if (!class_exists('HFCM_Takumi_API_Audit_Logger')) {
-            error_log('[hfcm-cli] Audit_Logger class not loaded; audit record skipped');
+            error_log('[hfcm-cli] Audit_Logger クラスが読み込まれていません; 監査レコードをスキップ');
             return;
         }
 
@@ -79,7 +79,7 @@ class CliAudit
 
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
         if ($json === false) {
-            // Fallback: encode with partial output on error to avoid passing false to Logger.
+            // フォールバック: エラー時に部分出力でエンコード、Logger に false を渡すのを避ける
             $json = json_encode(
                 array_merge($this->meta, [
                     'exit_code'    => $exitCode,

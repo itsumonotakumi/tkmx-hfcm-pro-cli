@@ -1,0 +1,7 @@
+{
+  "tool_name": "Read",
+  "tool_input_preview": "{\"file_path\":\"/home/isabro/dev/tkmx-hfcm-pro-cli/config/cli.local.sample.php\"}",
+  "error": "File does not exist. Note: your current working directory is /home/isabro/dev/tkmx-hfcm-pro-cli.",
+  "timestamp": "2026-05-14T09:48:09.651Z",
+  "retry_count": 1
+}

@@ -9,58 +9,58 @@ use Tkmx\HfcmCli\Console\ExitCode;
 class Bootstrap
 {
     /**
-     * Actor context populated during init(); consumed by CliAudit::start().
-     * Keys: unix_user, wp_user_login, impersonated_login (null if not impersonating).
+     * init() 時に設定され、CliAudit::start() で使用されるアクターコンテキスト
+     * キー: unix_user, wp_user_login, impersonated_login（偽装していない場合は null）
      *
      * @var array{unix_user: string, wp_user_login: string, impersonated_login: string|null}|null
      */
     private static ?array $actorContext = null;
 
     /**
-     * Initialise the WordPress environment and establish a user context.
+     * WordPress 環境を初期化し、ユーザーコンテキストを確立
      *
      * @param list<string> $argv
      */
     public static function init(array $argv): void
     {
-        // Parse --as early so we can validate HFCM_CLI_ALLOW_AS before WP loads.
+        // --as をいち早くパースし、WP ロード前に HFCM_CLI_ALLOW_AS を検証
         $asLogin = self::extractFlag($argv, '--as');
 
-        // Strict check: only literal '1' enables impersonation.
+        // 厳密チェック: リテラルの '1' だけが偽装を有効にする
         $allowAsEnv    = getenv('HFCM_CLI_ALLOW_AS');
         $allowAsDefine = defined('HFCM_CLI_ALLOW_AS') ? constant('HFCM_CLI_ALLOW_AS') : null;
         $allowAs       = ('1' === (string) $allowAsEnv) || ('1' === (string) $allowAsDefine);
 
         if ($asLogin !== null && !$allowAs) {
-            fwrite(STDERR, "Error: --as requires HFCM_CLI_ALLOW_AS=1 to be set\n");
+            fwrite(STDERR, "エラー: --as には HFCM_CLI_ALLOW_AS=1 が設定されている必要があります\n");
             exit(ExitCode::USAGE);
         }
 
-        // Load config/cli.local.php if present (validated for permissions first).
-        // The file MUST return an array (any array is acceptable, including empty).
-        // Side-effects such as DB/IO operations are forbidden inside the config file.
+        // config/cli.local.php を読み込み（存在する場合、権限検証をいち早く実施）
+        // ファイルは配列を return する必須（空配列を含む任意の配列が受け入れ可能）
+        // config ファイル内で DB/IO 操作などの副作用は禁止
         $localConfig = __DIR__ . '/../config/cli.local.php';
         if (file_exists($localConfig)) {
             self::validateConfigFile($localConfig);
             $cfg = require $localConfig;
             if (!is_array($cfg)) {
-                fwrite(STDERR, "Error: config/cli.local.php must return an array (e.g. return [];). Side-effects (DB/IO etc.) are forbidden.\n");
+                fwrite(STDERR, "エラー: config/cli.local.php は配列を return する必要があります（例: return [];）。副作用（DB/IO 等）は禁止です。\n");
                 exit(ExitCode::FORBIDDEN);
             }
         }
 
-        // Locate and load wp-load.php (up to 4 levels above this directory).
+        // wp-load.php を探す（このディレクトリから最大 4 レベル上）
         $wpLoad = self::findWpLoad(__DIR__ . '/../..');
         if ($wpLoad === null) {
-            fwrite(STDERR, "Error: wp-load.php not found. Place tkmx-hfcm-pro-cli/ inside your WordPress root.\n");
+            fwrite(STDERR, "エラー: wp-load.php が見つかりません。tkmx-hfcm-pro-cli/ を WordPress ルートの内側に配置してください。\n");
             exit(ExitCode::WP_LOAD_FAIL);
         }
 
-        // Suppress HTML output during WP boot.
+        // WP ブート中のHTMLOutput を抑制
         define('WP_USE_THEMES', false);
         require_once $wpLoad;
 
-        // Ensure minimum memory.
+        // 最小メモリを確保
         $memLimit = self::parseBytes((string) ini_get('memory_limit'));
         $minMem   = 256 * 1024 * 1024;
         if ($memLimit > 0 && $memLimit < $minMem) {
@@ -69,31 +69,31 @@ class Bootstrap
 
         set_time_limit(0);
 
-        // Verify plugin is active.
+        // プラグインがアクティブであることを確認
         if (!function_exists('is_plugin_active')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
         if (!is_plugin_active('hfcm-pro-takumi-api/hfcm-pro-takumi-api.php')) {
-            fwrite(STDERR, "Error: TKMX HFCM Pro API plugin is not active.\n");
+            fwrite(STDERR, "エラー: TKMX HFCM Pro API プラグインがアクティブになっていません。\n");
             exit(ExitCode::PLUGIN_INACTIVE);
         }
 
-        // Establish user context.
+        // ユーザーコンテキストを確立
         $defaultUser = getenv('HFCM_CLI_DEFAULT_USER') ?: (defined('HFCM_CLI_DEFAULT_USER') ? HFCM_CLI_DEFAULT_USER : '');
 
         $targetLogin = $asLogin ?? ($defaultUser !== '' ? $defaultUser : null);
 
         if ($targetLogin === null) {
-            fwrite(STDERR, "Error: No user specified. Set HFCM_CLI_DEFAULT_USER or use --as (with HFCM_CLI_ALLOW_AS=1).\n");
+            fwrite(STDERR, "エラー: ユーザーが指定されていません。HFCM_CLI_DEFAULT_USER を設定するか、--as を使用してください（HFCM_CLI_ALLOW_AS=1 が必要）。\n");
             exit(ExitCode::FORBIDDEN);
         }
 
-        // Validate against allowlist when HFCM_CLI_ALLOWED_AS_USERS is defined.
+        // HFCM_CLI_ALLOWED_AS_USERS が定義されている場合、許可リストに対して検証
         if ($asLogin !== null && defined('HFCM_CLI_ALLOWED_AS_USERS')) {
             $allowedUsers = HFCM_CLI_ALLOWED_AS_USERS;
             if (is_array($allowedUsers) && count($allowedUsers) > 0) {
                 if (!in_array($asLogin, $allowedUsers, true)) {
-                    fwrite(STDERR, "Error: User '" . addslashes($asLogin) . "' is not in HFCM_CLI_ALLOWED_AS_USERS allowlist.\n");
+                    fwrite(STDERR, "エラー: ユーザー '" . addslashes($asLogin) . "' は HFCM_CLI_ALLOWED_AS_USERS 許可リストにありません。\n");
                     exit(ExitCode::FORBIDDEN);
                 }
             }
@@ -101,17 +101,17 @@ class Bootstrap
 
         $user = get_user_by('login', $targetLogin);
         if (!$user) {
-            fwrite(STDERR, "Error: WordPress user not found: " . addslashes($targetLogin) . "\n");
+            fwrite(STDERR, "エラー: WordPress ユーザーが見つかりません: " . addslashes($targetLogin) . "\n");
             exit(ExitCode::FORBIDDEN);
         }
 
         wp_set_current_user($user->ID);
 
-        // Capability check is delegated to AbstractCommand::run() per command's
-        // requiredCap property. Bootstrap only ensures the user is valid.
-        // (read-only commands like list/get require 'read', not 'manage_options'.)
+        // 権限チェックは AbstractCommand::run() でコマンドの requiredCap プロパティに
+        // 従って委譲されます。Bootstrap はユーザーが有効であることを保証するだけです。
+        // （list/get のような読み取り専用コマンドは 'manage_options' ではなく 'read' が必要）
 
-        // Record actor context for CliAudit.
+        // CliAudit 用にアクターコンテキストを記録
         $unixUser = get_current_user() ?: (function_exists('posix_getlogin') ? @posix_getlogin() : '');
         self::$actorContext = [
             'unix_user'          => (string) $unixUser,
@@ -121,8 +121,8 @@ class Bootstrap
     }
 
     /**
-     * Return the actor context populated during init().
-     * Called by AbstractCommand to pass impersonation info to CliAudit::start().
+     * init() 時に設定されたアクターコンテキストを返す
+     * AbstractCommand から CliAudit::start() に偽装情報を渡すために呼び出される
      *
      * @return array{unix_user: string, wp_user_login: string, impersonated_login: string|null}|null
      */
@@ -132,7 +132,7 @@ class Bootstrap
     }
 
     /**
-     * Find wp-load.php by walking up from a start directory.
+     * 開始ディレクトリから上へ歩きながら wp-load.php を探す
      */
     private static function findWpLoad(string $startDir): ?string
     {
@@ -156,8 +156,8 @@ class Bootstrap
     }
 
     /**
-     * Validate that config file is owned by the current process user and mode 0600.
-     * Rejects symlinks. Performs a basic TOCTOU guard by re-stat after first check.
+     * config ファイルが現在のプロセスユーザーに所有され、権限が 0600 であることを検証
+     * シンボリックリンクを拒否。最初のチェック後に再スタットして基本的な TOCTOU ガードを実施
      */
     private static function validateConfigFile(string $path): void
     {
@@ -166,15 +166,15 @@ class Bootstrap
             exit(ExitCode::FORBIDDEN);
         }
 
-        // Reject symlinks (lstat checks the link itself, not the target).
+        // シンボリックリンクを拒否（lstat はリンク自体をチェック、ターゲットではない）
         if (is_link($path)) {
-            fwrite(STDERR, "Error: config/cli.local.php はシンボリックリンクであってはなりません\n");
+            fwrite(STDERR, "エラー: config/cli.local.php はシンボリックリンクであってはなりません\n");
             exit(ExitCode::FORBIDDEN);
         }
 
         $stat1 = @lstat($path);
         if ($stat1 === false) {
-            fwrite(STDERR, "Error: cannot stat config file: {$path}\n");
+            fwrite(STDERR, "エラー: config ファイルをスタット できません: {$path}\n");
             exit(ExitCode::FORBIDDEN);
         }
 
@@ -182,27 +182,27 @@ class Bootstrap
         $processOwner = posix_getuid();
 
         if ($fileOwner !== $processOwner) {
-            fwrite(STDERR, "Error: config/cli.local.php must be owned by the current user (uid mismatch)\n");
+            fwrite(STDERR, "エラー: config/cli.local.php は現在のユーザーに所有される必要があります（uid 不一致）\n");
             exit(ExitCode::FORBIDDEN);
         }
 
         $mode = $stat1['mode'] & 0777;
         if ($mode !== 0600) {
-            fwrite(STDERR, sprintf("Error: config/cli.local.php must have mode 0600 (found: %04o)\n", $mode));
+            fwrite(STDERR, sprintf("エラー: config/cli.local.php の権限は 0600 である必要があります（実際: %04o）\n", $mode));
             exit(ExitCode::FORBIDDEN);
         }
 
-        // TOCTOU guard: re-stat and confirm inode has not changed.
+        // TOCTOU ガード: 再スタットして inode が変更されていないことを確認
         $stat2 = @lstat($path);
         if ($stat2 === false || $stat2['ino'] !== $stat1['ino'] || $stat2['dev'] !== $stat1['dev']) {
-            fwrite(STDERR, "Error: config/cli.local.php changed between permission checks (possible TOCTOU attack)\n");
+            fwrite(STDERR, "エラー: 権限チェック中に config/cli.local.php が変更されました（可能な TOCTOU 攻撃）\n");
             exit(ExitCode::FORBIDDEN);
         }
     }
 
     /**
-     * Extract a named flag value from argv (e.g. --as=admin or --as admin).
-     * Treats a lone '-' token as a value (e.g. --file -).
+     * argv から名前付きフラグ値を抽出（例: --as=admin または --as admin）
+     * ロー '-' トークンを値として扱う（例: --file -）
      *
      * @param list<string> $argv
      */
@@ -215,7 +215,7 @@ class Bootstrap
             }
             if ($token === $flag && isset($argv[$i + 1])) {
                 $next = $argv[$i + 1];
-                // Accept lone '-' as value; reject other flag tokens.
+                // ロー '-' を値として受け入れ; 他のフラグトークンを拒否
                 if ($next === '-' || !str_starts_with($next, '-')) {
                     return $next;
                 }
@@ -225,7 +225,7 @@ class Bootstrap
     }
 
     /**
-     * Convert PHP memory shorthand to bytes.
+     * PHP メモリ短縮形をバイトに変換
      */
     private static function parseBytes(string $val): int
     {

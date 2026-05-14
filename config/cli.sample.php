@@ -1,42 +1,42 @@
 <?php
 
 /**
- * TKMX HFCM Pro CLI - Local configuration sample.
+ * TKMX HFCM Pro CLI - ローカル設定サンプル
  *
- * Copy this file to config/cli.local.php and set permissions:
+ * このファイルを config/cli.local.php にコピーし、権限を設定してください:
  *   cp config/cli.sample.php config/cli.local.php
  *   chmod 0600 config/cli.local.php
  *
- * Bootstrap validates: file owned by process user AND mode exactly 0600.
- * Any mismatch causes exit 4 (FORBIDDEN).
+ * Bootstrap は以下を検証します: ファイルが現在のプロセスユーザーに所有され、
+ * 権限がちょうど 0600 であること。不一致があれば exit 4 (FORBIDDEN) で終了します。
  *
- * **IMPORTANT: このファイルは array を return するだけにせよ。副作用禁止（DB/IO等）。**
- * define() による定数定義は許可（config 専用）。ファイル末尾に必ず `return [];` を記述すること。
- * return が array でない場合 Bootstrap が exit 4 で終了する。
+ * **重要: このファイルは配列を return するだけにしてください。副作用禁止（DB/IO等）。**
+ * define() による定数定義は許可（設定専用）。ファイル末尾に必ず `return [];` を記述してください。
+ * return が配列でない場合、Bootstrap は exit 4 で終了します。
  */
 
 // ---------------------------------------------------------------------------
-// Required: default WordPress user login for CLI execution.
-// The user must have the manage_options capability.
-// Can also be set via environment: HFCM_CLI_DEFAULT_USER=admin
+// 必須: CLI 実行用のデフォルト WordPress ユーザーログイン
+// ユーザーは manage_options 権限を持つ必要があります
+// 環境変数でも設定可能: HFCM_CLI_DEFAULT_USER=admin
 // ---------------------------------------------------------------------------
 define('HFCM_CLI_DEFAULT_USER', 'admin');
 
 // ---------------------------------------------------------------------------
-// Optional: allow --as=<user_login> impersonation.
-// Set to 1 to enable. Can also be set via environment: HFCM_CLI_ALLOW_AS=1
-// When enabled, every --as invocation is recorded in the audit log.
+// オプション: --as=<user_login> による偽装を許可
+// 1 に設定して有効にしてください。環境変数でも設定可能: HFCM_CLI_ALLOW_AS=1
+// 有効にされた場合、すべての --as 呼び出しは監査ログに記録されます
 // ---------------------------------------------------------------------------
 // define('HFCM_CLI_ALLOW_AS', '1');
 
 // ---------------------------------------------------------------------------
-// Optional: list of user logins permitted to be impersonated via --as.
-// Leave empty or unset to allow any user (subject to their own WP capabilities).
+// オプション: --as 経由で偽装することが許可されているユーザーログインのリスト
+// 空のままか未設定の場合、任意のユーザーを許可（対象のWP権限に従う）
 // ---------------------------------------------------------------------------
 // define('HFCM_CLI_ALLOWED_AS_USERS', ['admin', 'editor']);
 
 // ---------------------------------------------------------------------------
-// Required: this file must return an array. Do NOT add DB/IO side-effects.
-// Bootstrap will exit 4 (FORBIDDEN) if this file does not return an array.
+// 必須: このファイルは配列を return する必要があります。DB/IO の副作用を追加しないでください
+// このファイルが配列を return しない場合、Bootstrap は exit 4 (FORBIDDEN) で終了します
 // ---------------------------------------------------------------------------
 return [];

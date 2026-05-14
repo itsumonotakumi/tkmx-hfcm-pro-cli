@@ -13,7 +13,7 @@ class Args
     private array $positional = [];
 
     /**
-     * @param list<string> $argv  argv without argv[0] (script name)
+     * @param list<string> $argv  argv[0]（スクリプト名）を除いた argv
      */
     public function __construct(array $argv)
     {
@@ -36,12 +36,12 @@ class Args
                 continue;
             }
 
-            // --key value or --flag
+            // --key value または --flag
             if (str_starts_with($token, '--')) {
                 $key  = substr($token, 2);
                 $next = $argv[$i + 1] ?? null;
-                // Accept lone '-' as a value (e.g. --file - means STDIN).
-                // Reject tokens starting with '-' that are not lone '-' (those are flags).
+                // ロー '-' を値として受け入れ（例：--file - は STDIN を意味する）
+                // '-' で始まるトークン（フラグ）を拒否、ただしロー '-' を除く
                 if ($next !== null && ($next === '-' || !str_starts_with($next, '-'))) {
                     $this->options[$key] = $next;
                     $i += 2;
@@ -52,7 +52,7 @@ class Args
                 continue;
             }
 
-            // -k value (single-char short option)
+            // -k value（単一文字の短いオプション）
             if (str_starts_with($token, '-') && strlen($token) === 2) {
                 $key  = substr($token, 1);
                 $next = $argv[$i + 1] ?? null;
@@ -113,7 +113,7 @@ class Args
     }
 
     /**
-     * Return a redacted copy for audit logging (removes sensitive values).
+     * 監査ログ用に編集されたコピーを返す（機密値を削除）
      * @return array<string, mixed>
      */
     public function toRedactedArray(): array
@@ -121,7 +121,7 @@ class Args
         $sensitive = ['data', 'password', 'secret', 'token', 'key', 'auth', 'credential', 'apikey', 'api_key', 'authorization', 'bearer', 'file', 'out'];
         $out = [];
         foreach ($this->options as $k => $v) {
-            $out[$k] = in_array($k, $sensitive, true) ? '[REDACTED]' : $v;
+            $out[$k] = in_array($k, $sensitive, true) ? '[編集済]' : $v;
         }
         return $out;
     }

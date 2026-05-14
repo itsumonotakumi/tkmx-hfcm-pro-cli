@@ -1,0 +1,134 @@
+{
+  "agents": [
+    {
+      "agent_id": "a8a131b3444a12df4",
+      "agent_type": "Explore",
+      "started_at": "2026-05-14T02:00:41.046Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T02:02:10.383Z",
+      "duration_ms": 89337
+    },
+    {
+      "agent_id": "a7addf21281bed7b3",
+      "agent_type": "codex:codex-rescue",
+      "started_at": "2026-05-14T02:40:23.988Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T02:47:29.169Z",
+      "duration_ms": 425181
+    },
+    {
+      "agent_id": "a8fa6c5b6131ac88b",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-05-14T09:11:55.927Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:13:23.355Z",
+      "duration_ms": 87428
+    },
+    {
+      "agent_id": "a070a9314649ca2f4",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-05-14T09:13:59.299Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:21:44.430Z",
+      "duration_ms": 465131
+    },
+    {
+      "agent_id": "a150838c52ce72a4a",
+      "agent_type": "oh-my-claudecode:code-reviewer",
+      "started_at": "2026-05-14T09:22:07.515Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:25:09.912Z",
+      "duration_ms": 182397
+    },
+    {
+      "agent_id": "a5f3d45a80149ba63",
+      "agent_type": "oh-my-claudecode:security-reviewer",
+      "started_at": "2026-05-14T09:22:22.011Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:24:47.033Z",
+      "duration_ms": 145022
+    },
+    {
+      "agent_id": "aea1588fa93abe005",
+      "agent_type": "oh-my-claudecode:test-engineer",
+      "started_at": "2026-05-14T09:22:35.207Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:30:56.994Z",
+      "duration_ms": 501787
+    },
+    {
+      "agent_id": "a8cf67c4cbb2f839e",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-05-14T09:32:21.550Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:47:13.258Z",
+      "duration_ms": 891708
+    },
+    {
+      "agent_id": "ae867de343cef4e17",
+      "agent_type": "oh-my-claudecode:code-reviewer",
+      "started_at": "2026-05-14T09:47:38.925Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:49:53.528Z",
+      "duration_ms": 134603
+    },
+    {
+      "agent_id": "a37b675ca55ffc8ae",
+      "agent_type": "oh-my-claudecode:security-reviewer",
+      "started_at": "2026-05-14T09:47:45.213Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:50:29.108Z",
+      "duration_ms": 163895
+    },
+    {
+      "agent_id": "a49296a582d9a112c",
+      "agent_type": "oh-my-claudecode:test-engineer",
+      "started_at": "2026-05-14T09:47:51.932Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T09:56:26.282Z",
+      "duration_ms": 514350
+    },
+    {
+      "agent_id": "a9162bdfcf4e32e3f",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-05-14T10:57:24.018Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T11:05:14.755Z",
+      "duration_ms": 470737
+    },
+    {
+      "agent_id": "ad7e1fa4d5c925801",
+      "agent_type": "oh-my-claudecode:writer",
+      "started_at": "2026-05-14T11:42:58.034Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T11:43:37.500Z",
+      "duration_ms": 39466
+    },
+    {
+      "agent_id": "aafb6aaf55ba0b9b3",
+      "agent_type": "oh-my-claudecode:writer",
+      "started_at": "2026-05-14T11:43:13.050Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-05-14T11:47:07.211Z",
+      "duration_ms": 234161
+    }
+  ],
+  "total_spawned": 14,
+  "total_completed": 14,
+  "total_failed": 0,
+  "last_updated": "2026-05-14T11:47:07.313Z"
+}

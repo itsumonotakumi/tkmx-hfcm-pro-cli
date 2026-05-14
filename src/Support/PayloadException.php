@@ -7,8 +7,8 @@ namespace Tkmx\HfcmCli\Support;
 use Tkmx\HfcmCli\Console\ExitCode;
 
 /**
- * Thrown by PayloadLoader on any load/parse failure.
- * Caught in bin/hfcm and converted to the appropriate exit code.
+ * 読み込み/解析失敗時に PayloadLoader で投げられる
+ * bin/hfcm でキャッチされ、適切な終了コードに変換される
  */
 class PayloadException extends \RuntimeException
 {
@@ -16,7 +16,7 @@ class PayloadException extends \RuntimeException
         string $message,
         private readonly int $exitCode = ExitCode::ERROR,
     ) {
-        // Pass exitCode as the $code argument so PHPUnit's expectExceptionCode() works.
+        // $code 引数として exitCode を渡し、PHPUnit の expectExceptionCode() が動作するようにする
         parent::__construct($message, $exitCode);
     }
 

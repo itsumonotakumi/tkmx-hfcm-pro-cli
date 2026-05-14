@@ -8,28 +8,28 @@ use Tkmx\HfcmCli\Console\Args;
 use Tkmx\HfcmCli\Console\ExitCode;
 
 /**
- * Loads JSON payload from --data, --file, or STDIN.
+ * --data、--file、または STDIN から JSON ペイロードを読み込む
  *
- * Size limits are intentionally absent: this CLI operates within a trusted
- * boundary (local filesystem, same server), so no size cap is enforced.
- * See DESIGN.md §PayloadLoader for rationale.
+ * サイズ制限は意図的に不在: この CLI は信頼できる境界（ローカルファイルシステム、
+ * 同じサーバー）内で動作するため、サイズキャップは強制されない
+ * 詳細は DESIGN.md §PayloadLoader を参照
  *
- * @throws PayloadException on any load/parse failure (caught in bin/hfcm).
+ * @throws PayloadException 読み込み/解析失敗時（bin/hfcm でキャッチ）
  */
 class PayloadLoader
 {
     /**
-     * Metadata about the last successfully loaded payload.
-     * Populated by load(); consumed by AbstractCommand via consumeLastMeta().
-     * Keys: bytes (int), sha256 (string).
+     * 最後に正常に読み込まれたペイロードについてのメタデータ
+     * load() で設定; AbstractCommand で consumeLastMeta() で使用
+     * キー: bytes（int）、sha256（文字列）
      *
      * @var array{bytes: int, sha256: string}|null
      */
     private static ?array $lastMeta = null;
 
     /**
-     * Return and clear the payload metadata recorded during the last load() call.
-     * Returns null if load() has not been called or if it threw.
+     * 最後の load() 呼び出し時に記録されたペイロードメタデータを返して削除
+     * load() が呼ばれていないか、投げられた場合は null を返す
      *
      * @return array{bytes: int, sha256: string}|null
      */
@@ -41,8 +41,8 @@ class PayloadLoader
     }
 
     /**
-     * Load JSON payload from --data, --file, or STDIN (-).
-     * Returns decoded array on success, throws PayloadException on error.
+     * --data、--file、または STDIN（-）から JSON ペイロードを読み込む
+     * 成功時はデコード済み配列を返し、エラー時は PayloadException を投げる
      *
      * @return array<string, mixed>
      * @throws PayloadException
@@ -50,30 +50,30 @@ class PayloadLoader
     public static function load(Args $args): array
     {
         self::$lastMeta = null;
-        // Priority 1: --data=<json>
+        // 優先度 1: --data=<json>
         if ($args->has('data')) {
             $raw = $args->getString('data');
-            return self::decodeJson($raw, 'inline --data');
+            return self::decodeJson($raw, 'インライン --data');
         }
 
         $file = $args->getString('file');
 
-        // Priority 2 (STDIN): --file=-
+        // 優先度 2（STDIN）: --file=-
         if ($file === '-') {
             $raw = stream_get_contents(STDIN);
             if ($raw === false) {
-                throw new PayloadException("failed to read from STDIN", ExitCode::ERROR);
+                throw new PayloadException("STDIN から読み込みに失敗しました", ExitCode::ERROR);
             }
             return self::decodeJson($raw, 'STDIN');
         }
 
-        // Priority 3: --file=<path>
+        // 優先度 3: --file=<path>
         if ($file !== '') {
             return self::loadFile($file);
         }
 
         throw new PayloadException(
-            "one of --data, --file, or --file=- (STDIN) is required",
+            "--data、--file、または --file=（STDIN）のいずれかが必須です",
             ExitCode::USAGE
         );
     }
@@ -84,11 +84,11 @@ class PayloadLoader
     private static function loadFile(string $path): array
     {
         if (is_link($path)) {
-            throw new PayloadException("symlinks are not allowed: " . basename($path), ExitCode::ERROR);
+            throw new PayloadException("シンボリックリンクは許可されていません: " . basename($path), ExitCode::ERROR);
         }
 
         if (!is_readable($path)) {
-            throw new PayloadException("file not readable: " . basename($path), ExitCode::ERROR);
+            throw new PayloadException("ファイルは読み込み可能ではありません: " . basename($path), ExitCode::ERROR);
         }
 
         $isGzip = str_ends_with($path, '.gz') || self::isGzipMagic($path);
@@ -96,26 +96,26 @@ class PayloadLoader
         if ($isGzip) {
             $compressed = file_get_contents($path);
             if ($compressed === false) {
-                throw new PayloadException("failed to read file: " . basename($path), ExitCode::ERROR);
+                throw new PayloadException("ファイルの読み込みに失敗しました: " . basename($path), ExitCode::ERROR);
             }
             $raw = @gzdecode($compressed);
             if ($raw === false) {
-                throw new PayloadException("invalid_gzip - failed to decompress file: " . basename($path), ExitCode::ERROR);
+                throw new PayloadException("invalid_gzip - ファイルの展開に失敗しました: " . basename($path), ExitCode::ERROR);
             }
             return self::decodeJson($raw, basename($path));
         }
 
-        // Plain file — no size limit (trusted boundary).
+        // プレーンファイル — サイズ制限なし（信頼できる境界）
         $raw = file_get_contents($path);
         if ($raw === false) {
-            throw new PayloadException("failed to read file: " . basename($path), ExitCode::ERROR);
+            throw new PayloadException("ファイルの読み込みに失敗しました: " . basename($path), ExitCode::ERROR);
         }
 
         return self::decodeJson($raw, basename($path));
     }
 
     /**
-     * Detect gzip magic bytes (\x1f\x8b) without relying on extension.
+     * gzip マジックバイト（\x1f\x8b）を拡張子に頼らずに検出
      */
     private static function isGzipMagic(string $path): bool
     {
@@ -129,8 +129,8 @@ class PayloadLoader
     }
 
     /**
-     * JSON decode; throws PayloadException on error.
-     * On success, populates $lastMeta with bytes and sha256 of raw input.
+     * JSON デコード; エラー時に PayloadException を投げる
+     * 成功時、生入力のバイト数と sha256 で $lastMeta を設定
      *
      * @return array<string, mixed>
      * @throws PayloadException
@@ -140,7 +140,7 @@ class PayloadLoader
         $decoded = json_decode($raw, true);
         if (!is_array($decoded)) {
             throw new PayloadException(
-                "invalid JSON from {$source}: " . json_last_error_msg(),
+                "{$source} からの無効な JSON: " . json_last_error_msg(),
                 ExitCode::ERROR
             );
         }

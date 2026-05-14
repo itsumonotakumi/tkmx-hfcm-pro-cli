@@ -5,57 +5,59 @@ declare(strict_types=1);
 namespace Tkmx\HfcmCli\Support;
 
 /**
- * Atomic execution lock shared between CLI and REST layer.
+ * CLI と REST レイヤー間で共有される原子的実行ロック
  *
- * Both layers check the transient key 'hfcm_import_lock'. The CLI uses
- * add_option() on the underlying options-table row (autoload=no) to achieve
- * an atomic compare-and-set: MySQL's UNIQUE constraint on option_name means
- * only one caller can INSERT successfully. After acquiring via add_option(),
- * we also call set_transient() so that REST's get_transient() sees the lock.
+ * 両方のレイヤーはトランジェント キー 'hfcm_import_lock' をチェック
+ * CLI は基礎となるオプションテーブル行（autoload=no）で add_option() を使用して
+ * 原子的な比較と設定を実現: MySQL の option_name の UNIQUE 制約により、
+ * INSERT に成功できる呼び出し元は 1 つだけ。add_option() で取得した後、
+ * set_transient() も呼び出し、REST の get_transient() がロックを見えるようにする
  *
- * On release, the owner_token is verified before deletion to prevent one
- * process from releasing another's lock (e.g. on SIGTERM with concurrent runs).
+ * リリース時、削除前に owner_token を検証し、あるプロセスが別のプロセスの
+ * ロックをリリース（例：SIGTERM で並行実行）するのを防ぐ
  *
- * Note on object caches: if a persistent object cache (Redis/Memcached) is
- * active, set_transient() may bypass the DB. We guard against this by also
- * calling wp_cache_add() for the options group. In practice, the options-table
- * row is the authoritative source; REST's get_transient() will also read from
- * the persistent cache if one is present, so the lock is visible to both layers.
+ * オブジェクトキャッシュに関する注記: 永続的なオブジェクトキャッシュ
+ *（Redis/Memcached）がアクティブな場合、set_transient() は DB をバイパス
+ * する可能性。wp_cache_add() をオプショングループでも呼び出すことで
+ * ガード。実際には、オプションテーブル行が権威的なソース; REST の
+ * get_transient() も、永続的なキャッシュがあれば読み込むため、
+ * ロックは両方のレイヤーに見える
  */
 class ExecutionLock
 {
     private const TRANSIENT_KEY = 'hfcm_import_lock';
     private const OPTION_KEY    = '_transient_' . self::TRANSIENT_KEY;
-    private const TTL           = 300; // 5 minutes, same as REST layer
+    private const TTL           = 300; // 5 分、REST レイヤーと同じ
 
-    /** Owner token for the current process; null if not acquired by this process. */
+    /** 現在のプロセスのオーナートークン; このプロセスで取得されていない場合は null */
     private static ?string $ownerToken = null;
 
     /**
-     * Attempt to acquire the lock atomically.
+     * ロックを原子的に取得しようと試みる
      *
-     * Returns true if this process acquired the lock, false if already held.
+     * このプロセスがロックを取得した場合は true、既に保持されている場合は false を返す
      */
     public static function acquire(): bool
     {
         $token = uniqid('cli_lock_', true) . '_' . getmypid();
 
-        // First check the transient (fast path): REST and other CLIs set it.
+        // まずトランジェントをチェック（高速パス）: REST と他の CLI が設定
         if (false !== get_transient(self::TRANSIENT_KEY)) {
             return false;
         }
 
-        // Atomic insert via options table (UNIQUE constraint guarantees atomicity).
-        // add_option() returns false if the row already exists.
+        // オプションテーブル経由で原子的挿入（UNIQUE 制約が原子性を保証）
+        // add_option() は行が既に存在する場合 false を返す
         $acquired = add_option(self::OPTION_KEY, $token, '', 'no');
         if (!$acquired) {
-            // Another process beat us to the INSERT.
+            // 別のプロセスが INSERT に勝った
             return false;
         }
 
-        // Mirror into the transient cache so REST's get_transient() sees the lock.
-        // If set_transient() fails (e.g. DB error), roll back the option row to avoid
-        // a permanently stuck lock with no transient TTL cleanup path.
+        // REST の get_transient() がロックを見えるようにトランジェントキャッシュに
+        // ミラー化。set_transient() が失敗（DB エラーなど）した場合、永続的に
+        // スタックしたロック（トランジェント TTL クリーンアップパスなし）を避けるため
+        // オプション行をロールバック
         if (!set_transient(self::TRANSIENT_KEY, $token, self::TTL)) {
             delete_option(self::OPTION_KEY);
             return false;
@@ -66,7 +68,7 @@ class ExecutionLock
     }
 
     /**
-     * Release the lock, but only if this process owns it.
+     * ロックをリリース、ただしこのプロセスがそれを所有している場合のみ
      */
     public static function release(): void
     {
@@ -74,7 +76,7 @@ class ExecutionLock
             return;
         }
 
-        // Verify ownership: only delete if the stored token matches ours.
+        // 所有権を検証: 保存されているトークンが私たちのものと一致する場合のみ削除
         $current = get_option(self::OPTION_KEY);
         if ($current === self::$ownerToken) {
             delete_option(self::OPTION_KEY);
@@ -85,8 +87,8 @@ class ExecutionLock
     }
 
     /**
-     * Release if this process is the owner. Safe to call from signal handlers.
-     * Alias of release() exposed for clarity in bin/hfcm signal handler.
+     * このプロセスがオーナーである場合、ロックをリリース。シグナルハンドラーから呼ばれても安全
+     * bin/hfcm シグナルハンドラーで明確にするために release() のエイリアスを公開
      */
     public static function releaseIfOwner(): void
     {
@@ -94,7 +96,7 @@ class ExecutionLock
     }
 
     /**
-     * Check whether the lock is currently held (by any process).
+     * ロックが現在保持されているかをチェック（任意のプロセスで）
      */
     public static function isLocked(): bool
     {

@@ -21,8 +21,8 @@ class SnippetsExport extends AbstractCommand
         $format = $args->getString('format', 'json');
         if (!in_array($format, ['json', 'csv'], true)) {
             $this->output->error(
-                ['code' => 'invalid_format', 'message' => "--format must be 'json' or 'csv'"],
-                "--format must be 'json' or 'csv'"
+                ['code' => 'invalid_format', 'message' => "--format は 'json' または 'csv' である必要があります"],
+                "--format は 'json' または 'csv' である必要があります"
             );
             return ExitCode::USAGE;
         }
@@ -30,21 +30,21 @@ class SnippetsExport extends AbstractCommand
         $outPath  = $args->getString('out', '');
         $force    = $args->getBool('force');
 
-        // Validate --out path before running the export.
+        // エクスポート実行前に --out パスを検証
         if ($outPath !== '') {
-            // Reject symlinks unconditionally (even with --force).
+            // シンボリックリンクを無条件に拒否（--force でも）
             if (is_link($outPath)) {
                 $this->output->error(
-                    ['code' => 'symlink_rejected', 'message' => "Output path must not be a symlink: {$outPath}"],
-                    "Output path must not be a symlink: {$outPath}"
+                    ['code' => 'symlink_rejected', 'message' => "出力パスはシンボリックリンクであってはなりません: {$outPath}"],
+                    "出力パスはシンボリックリンクであってはなりません: {$outPath}"
                 );
                 return ExitCode::ERROR;
             }
 
             if (file_exists($outPath) && !$force) {
                 $this->output->error(
-                    ['code' => 'file_exists', 'message' => "Output file already exists: {$outPath}. Use --force to overwrite."],
-                    "Output file already exists: {$outPath}. Use --force to overwrite."
+                    ['code' => 'file_exists', 'message' => "出力ファイルは既に存在します: {$outPath}。上書きするには --force を使用してください。"],
+                    "出力ファイルは既に存在します: {$outPath}。上書きするには --force を使用してください。"
                 );
                 return ExitCode::ERROR;
             }
@@ -52,14 +52,14 @@ class SnippetsExport extends AbstractCommand
             $dir = dirname($outPath);
             if (!is_writable($dir)) {
                 $this->output->error(
-                    ['code' => 'write_error', 'message' => "Output directory is not writable: {$dir}"],
-                    "Output directory is not writable: {$dir}"
+                    ['code' => 'write_error', 'message' => "出力ディレクトリは書き込み可能ではありません: {$dir}"],
+                    "出力ディレクトリは書き込み可能ではありません: {$dir}"
                 );
                 return ExitCode::ERROR;
             }
         }
 
-        // Parse optional --ids=1,2,3 filter.
+        // オプションの --ids=1,2,3 フィルターをパース
         $idsRaw     = $args->getString('ids', '');
         $snippetIds = null;
         if ($idsRaw !== '') {
@@ -69,8 +69,8 @@ class SnippetsExport extends AbstractCommand
             );
             if (count($parsed) === 0) {
                 $this->output->error(
-                    ['code' => 'invalid_ids', 'message' => '--ids must be a comma-separated list of positive integers'],
-                    '--ids must be a comma-separated list of positive integers'
+                    ['code' => 'invalid_ids', 'message' => '--ids はカンマ区切りの正の整数のリストである必要があります'],
+                    '--ids はカンマ区切りの正の整数のリストである必要があります'
                 );
                 return ExitCode::USAGE;
             }
@@ -88,14 +88,14 @@ class SnippetsExport extends AbstractCommand
         }
 
         if ($outPath !== '') {
-            // Write to file atomically via fopen with 'xb' (O_CREAT|O_EXCL) to
-            // prevent TOCTOU attacks between the existence check and write.
-            // With --force, remove the existing file first then open exclusively.
+            // fopen で 'xb'（O_CREAT|O_EXCL）経由でアトミックにファイルに書き込み
+            // 存在チェックと書き込み間の TOCTOU 攻撃を防ぐ
+            // --force を使用する場合、既存ファイルを先に削除して排他的にオープン
             if ($force && file_exists($outPath)) {
                 if (!unlink($outPath)) {
                     $this->output->error(
-                        ['code' => 'write_error', 'message' => "Failed to remove existing file: {$outPath}"],
-                        "Failed to remove existing file: {$outPath}"
+                        ['code' => 'write_error', 'message' => "既存ファイルを削除できませんでした: {$outPath}"],
+                        "既存ファイルを削除できませんでした: {$outPath}"
                     );
                     return ExitCode::ERROR;
                 }
@@ -104,8 +104,8 @@ class SnippetsExport extends AbstractCommand
             $fh = fopen($outPath, 'xb');
             if ($fh === false) {
                 $this->output->error(
-                    ['code' => 'write_error', 'message' => "Failed to create output file (may already exist): {$outPath}"],
-                    "Failed to create output file (may already exist): {$outPath}"
+                    ['code' => 'write_error', 'message' => "出力ファイルを作成できませんでした（既に存在する可能性があります）: {$outPath}"],
+                    "出力ファイルを作成できませんでした（既に存在する可能性があります）: {$outPath}"
                 );
                 return ExitCode::ERROR;
             }
@@ -119,8 +119,8 @@ class SnippetsExport extends AbstractCommand
 
             if ($written === false) {
                 $this->output->error(
-                    ['code' => 'write_error', 'message' => "Failed to write to: {$outPath}"],
-                    "Failed to write to: {$outPath}"
+                    ['code' => 'write_error', 'message' => "書き込みに失敗しました: {$outPath}"],
+                    "書き込みに失敗しました: {$outPath}"
                 );
                 return ExitCode::ERROR;
             }
@@ -129,8 +129,8 @@ class SnippetsExport extends AbstractCommand
             return ExitCode::OK;
         }
 
-        // Output to STDOUT.
-        // CSV is a raw string; JSON uses the structured output helper.
+        // STDOUT に出力
+        // CSV はプレーンな文字列; JSON は構造化出力ヘルパーを使用
         if ($format === 'csv') {
             echo is_string($result) ? $result : '';
         } else {

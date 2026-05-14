@@ -16,7 +16,7 @@ class Output
     }
 
     /**
-     * Write success response to STDOUT.
+     * STDOUT に成功レスポンスを書き込む
      * @param mixed $data
      * @param array<string, mixed> $meta
      */
@@ -36,7 +36,7 @@ class Output
     }
 
     /**
-     * Write error to STDOUT (JSON) and human-readable to STDERR.
+     * STDOUT にエラーを JSON で、STDERR に人間が読める形で書き込む
      * @param array<string, mixed> $error
      */
     public function error(array $error, string $humanMessage = ''): void
@@ -53,7 +53,7 @@ class Output
     }
 
     /**
-     * Write a plain message to STDERR (not captured as JSON output).
+     * STDERR にプレーンメッセージを書き込む（JSON 出力としてキャプチャされない）
      */
     public function stderr(string $message): void
     {
@@ -62,7 +62,7 @@ class Output
         }
     }
 
-    /** @param mixed $payload */
+    /** @param mixed $payload JSON ペイロード */
     private function writeJson(mixed $payload): void
     {
         $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
@@ -73,17 +73,17 @@ class Output
     }
 
     /**
-     * Render a list of associative arrays as an ASCII table.
+     * 連想配列のリストを ASCII テーブルとしてレンダリング
      * @param array<int, array<string, mixed>> $rows
      */
     private function writeTable(array $rows): void
     {
         if (empty($rows)) {
-            echo "(no records)\n";
+            echo "(レコードなし)\n";
             return;
         }
 
-        // Flatten nested arrays to strings for display.
+        // 表示用にネストされた配列を文字列にフラット化
         $flat = array_map(function (array $row): array {
             return array_map(fn($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string) $v, $row);
         }, $rows);

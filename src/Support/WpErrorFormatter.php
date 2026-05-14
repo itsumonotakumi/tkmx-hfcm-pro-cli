@@ -9,7 +9,7 @@ use Tkmx\HfcmCli\Console\ExitCode;
 class WpErrorFormatter
 {
     /**
-     * Convert WP_Error to a plain array.
+     * WP_Error をプレーン配列に変換
      * @param \WP_Error $error
      * @return array{code: string, message: string, data: mixed}
      */
@@ -23,19 +23,19 @@ class WpErrorFormatter
     }
 
     /**
-     * Map WP_Error code to CLI exit code.
+     * WP_Error コードを CLI 終了コードにマップ
      * @param \WP_Error $error
      */
     public static function toExitCode(\WP_Error $error): int
     {
         $code = $error->get_error_code();
 
-        // Permission/auth errors.
+        // 権限/認証エラー
         if (in_array($code, ['rest_forbidden', 'rest_not_logged_in', 'rest_cannot_edit'], true)) {
             return ExitCode::FORBIDDEN;
         }
 
-        // Validation / not-found / payload size.
+        // 検証/見つからない/ペイロードサイズ
         if (
             str_starts_with($code, 'invalid_') ||
             $code === 'not_found' ||
@@ -47,12 +47,12 @@ class WpErrorFormatter
             return ExitCode::ERROR;
         }
 
-        // Internal / DB errors.
+        // 内部/DB エラー
         if (str_starts_with($code, 'db_') || $code === 'internal_error') {
             return ExitCode::INTERNAL;
         }
 
-        // HTTP status-based fallback.
+        // HTTP ステータスベースのフォールバック
         $data = $error->get_error_data();
         if (is_array($data) && isset($data['status'])) {
             $status = (int) $data['status'];
