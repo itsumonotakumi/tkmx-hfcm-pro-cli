@@ -42,7 +42,7 @@ class WpErrorFormatter
             $code === 'payload_too_large' ||
             str_starts_with($code, 'bulk_') ||
             $code === 'import_too_large' ||
-            $code === 'missing_'
+            str_starts_with($code, 'missing_')
         ) {
             return ExitCode::ERROR;
         }
