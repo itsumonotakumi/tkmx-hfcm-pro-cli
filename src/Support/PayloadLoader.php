@@ -7,16 +7,23 @@ namespace Tkmx\HfcmCli\Support;
 use Tkmx\HfcmCli\Console\Args;
 use Tkmx\HfcmCli\Console\ExitCode;
 
+/**
+ * Loads JSON payload from --data, --file, or STDIN.
+ *
+ * Size limits are intentionally absent: this CLI operates within a trusted
+ * boundary (local filesystem, same server), so no size cap is enforced.
+ * See DESIGN.md §PayloadLoader for rationale.
+ *
+ * @throws PayloadException on any load/parse failure (caught in bin/hfcm).
+ */
 class PayloadLoader
 {
-    private const MAX_COMPRESSED   = 5 * 1024 * 1024;  // 5 MB
-    private const MAX_UNCOMPRESSED = 10 * 1024 * 1024; // 10 MB
-
     /**
      * Load JSON payload from --data, --file, or STDIN (-).
-     * Returns decoded array on success, exits on error.
+     * Returns decoded array on success, throws PayloadException on error.
      *
      * @return array<string, mixed>
+     * @throws PayloadException
      */
     public static function load(Args $args): array
     {
@@ -28,71 +35,60 @@ class PayloadLoader
 
         $file = $args->getString('file');
 
-        // Priority 3: STDIN
+        // Priority 2 (STDIN): --file=-
         if ($file === '-') {
             $raw = stream_get_contents(STDIN);
             if ($raw === false) {
-                fwrite(STDERR, "Error: failed to read from STDIN\n");
-                exit(ExitCode::ERROR);
+                throw new PayloadException("failed to read from STDIN", ExitCode::ERROR);
             }
             return self::decodeJson($raw, 'STDIN');
         }
 
-        // Priority 2: --file=<path>
+        // Priority 3: --file=<path>
         if ($file !== '') {
             return self::loadFile($file);
         }
 
-        fwrite(STDERR, "Error: one of --data, --file, or --file=- (STDIN) is required\n");
-        exit(ExitCode::USAGE);
+        throw new PayloadException(
+            "one of --data, --file, or --file=- (STDIN) is required",
+            ExitCode::USAGE
+        );
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, mixed>
+     * @throws PayloadException
+     */
     private static function loadFile(string $path): array
     {
-        if (!is_readable($path)) {
-            fwrite(STDERR, "Error: file not readable: {$path}\n");
-            exit(ExitCode::ERROR);
+        if (is_link($path)) {
+            throw new PayloadException("symlinks are not allowed: " . basename($path), ExitCode::ERROR);
         }
 
-        $size = filesize($path);
+        if (!is_readable($path)) {
+            throw new PayloadException("file not readable: " . basename($path), ExitCode::ERROR);
+        }
+
         $isGzip = str_ends_with($path, '.gz') || self::isGzipMagic($path);
 
         if ($isGzip) {
-            if ($size > self::MAX_COMPRESSED) {
-                fwrite(STDERR, "Error: payload_too_large - compressed file exceeds 5 MB limit\n");
-                exit(ExitCode::ERROR);
-            }
             $compressed = file_get_contents($path);
             if ($compressed === false) {
-                fwrite(STDERR, "Error: failed to read file: {$path}\n");
-                exit(ExitCode::ERROR);
+                throw new PayloadException("failed to read file: " . basename($path), ExitCode::ERROR);
             }
             $raw = @gzdecode($compressed);
             if ($raw === false) {
-                fwrite(STDERR, "Error: invalid_gzip - failed to decompress file: {$path}\n");
-                exit(ExitCode::ERROR);
+                throw new PayloadException("invalid_gzip - failed to decompress file: " . basename($path), ExitCode::ERROR);
             }
-            if (strlen($raw) > self::MAX_UNCOMPRESSED) {
-                fwrite(STDERR, "Error: payload_too_large - decompressed content exceeds 10 MB limit\n");
-                exit(ExitCode::ERROR);
-            }
-            return self::decodeJson($raw, $path);
+            return self::decodeJson($raw, basename($path));
         }
 
-        // Plain file
-        if ($size > self::MAX_UNCOMPRESSED) {
-            fwrite(STDERR, "Error: payload_too_large - file exceeds 10 MB limit\n");
-            exit(ExitCode::ERROR);
-        }
-
+        // Plain file — no size limit (trusted boundary).
         $raw = file_get_contents($path);
         if ($raw === false) {
-            fwrite(STDERR, "Error: failed to read file: {$path}\n");
-            exit(ExitCode::ERROR);
+            throw new PayloadException("failed to read file: " . basename($path), ExitCode::ERROR);
         }
 
-        return self::decodeJson($raw, $path);
+        return self::decodeJson($raw, basename($path));
     }
 
     /**
@@ -110,15 +106,19 @@ class PayloadLoader
     }
 
     /**
-     * JSON decode with size guard and exit on error.
+     * JSON decode; throws PayloadException on error.
+     *
      * @return array<string, mixed>
+     * @throws PayloadException
      */
     private static function decodeJson(string $raw, string $source): array
     {
         $decoded = json_decode($raw, true);
         if (!is_array($decoded)) {
-            fwrite(STDERR, "Error: invalid JSON from {$source}: " . json_last_error_msg() . "\n");
-            exit(ExitCode::ERROR);
+            throw new PayloadException(
+                "invalid JSON from {$source}: " . json_last_error_msg(),
+                ExitCode::ERROR
+            );
         }
         return $decoded;
     }

@@ -19,4 +19,22 @@ require __DIR__ . '/../src/Bootstrap.php';
 
 \Tkmx\HfcmCli\Bootstrap::init($argv);
 
-exit((new \Tkmx\HfcmCli\Router())->dispatch($argv));
+// Register SIGTERM/SIGINT handler to ensure ExecutionLock is released on signal.
+if (function_exists('pcntl_async_signals')) {
+    pcntl_async_signals(true);
+    $signalHandler = function (int $signal) use ($argv): void {
+        \Tkmx\HfcmCli\Support\ExecutionLock::releaseIfOwner();
+        exit(130);
+    };
+    if (function_exists('pcntl_signal')) {
+        pcntl_signal(SIGTERM, $signalHandler);
+        pcntl_signal(SIGINT, $signalHandler);
+    }
+}
+
+try {
+    exit((new \Tkmx\HfcmCli\Router())->dispatch($argv));
+} catch (\Tkmx\HfcmCli\Support\PayloadException $e) {
+    fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
+    exit($e->getExitCode());
+}

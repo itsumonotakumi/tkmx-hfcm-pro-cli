@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use Tkmx\HfcmCli\Console\Args;
+use Tkmx\HfcmCli\Console\ExitCode;
+use Tkmx\HfcmCli\Support\PayloadException;
 use Tkmx\HfcmCli\Support\PayloadLoader;
 
 class PayloadLoaderTest extends TestCase
@@ -53,22 +55,12 @@ class PayloadLoaderTest extends TestCase
         $this->assertSame('gz-test', $result['snippets'][0]['name']);
     }
 
-    public function testInvalidJsonFromDataExits(): void
+    public function testInvalidJsonFromDataThrows(): void
     {
+        $this->expectException(PayloadException::class);
+        $this->expectExceptionCode(ExitCode::ERROR);
         $args = new Args(['--data=not-valid-json']);
-        $this->expectException(\PHPUnit\Framework\Error\Error::class);
-        // PayloadLoader calls exit(); capture via process would be ideal,
-        // but here we test that invalid JSON does not return an array.
-        // We use output buffering and error suppression to detect the exit.
-        $exited = false;
-        try {
-            PayloadLoader::load($args);
-        } catch (\Throwable $e) {
-            $exited = true;
-        }
-        // If exit() was called it propagates as an error in test context with process isolation.
-        // Mark as passed if we get here; the actual exit path is tested via CLI integration.
-        $this->assertTrue(true);
+        PayloadLoader::load($args);
     }
 
     public function testGzipMagicBytesDetected(): void
@@ -81,35 +73,87 @@ class PayloadLoaderTest extends TestCase
         $this->assertSame('value', $result['key']);
     }
 
-    public function testFileTooLargeExits(): void
-    {
-        // Create a file just over 10 MB uncompressed.
-        $path = $this->tmpDir . '/big.json';
-        // We can't easily write 10MB in a unit test, so verify the constant is correct.
-        $this->assertTrue(true, 'Size limit constant verified at 10MB in source.');
-    }
-
-    public function testInvalidGzipExits(): void
+    public function testInvalidGzipThrows(): void
     {
         $path = $this->tmpDir . '/bad.json.gz';
-        // Write gzip magic bytes followed by garbage.
+        // Write gzip magic bytes followed by garbage to trigger gzdecode failure.
         file_put_contents($path, "\x1f\x8b" . str_repeat("\x00", 100));
+        $this->expectException(PayloadException::class);
+        $this->expectExceptionCode(ExitCode::ERROR);
         $args = new Args(['--file=' . $path]);
+        PayloadLoader::load($args);
+    }
 
-        // Capture exit via output buffering.
-        $result = null;
-        $exited = false;
-        ob_start();
-        try {
-            $result = PayloadLoader::load($args);
-        } catch (\Throwable $e) {
-            $exited = true;
-        }
-        ob_end_clean();
+    public function testFileNotFoundThrows(): void
+    {
+        $this->expectException(PayloadException::class);
+        $args = new Args(['--file=/nonexistent/path/data.json']);
+        PayloadLoader::load($args);
+    }
 
-        // In unit test context (no process isolation), exit() may propagate
-        // or be caught depending on environment. The important thing is that
-        // a non-array result or an exception is produced.
-        $this->assertTrue($exited || !is_array($result));
+    public function testNoSourceThrows(): void
+    {
+        $this->expectException(PayloadException::class);
+        $this->expectExceptionCode(ExitCode::USAGE);
+        $args = new Args([]);
+        PayloadLoader::load($args);
+    }
+
+    public function testDataTakesPriorityOverFile(): void
+    {
+        // --data should be used even when --file is also present.
+        $path = $this->tmpDir . '/other.json';
+        file_put_contents($path, json_encode(['from' => 'file']));
+        $json = json_encode(['from' => 'data']);
+        $args = new Args(['--data=' . $json, '--file=' . $path]);
+        $result = PayloadLoader::load($args);
+        $this->assertSame('data', $result['from']);
+    }
+
+    public function testGzipWithoutExtensionDetectedByMagicBytes(): void
+    {
+        // A .bin file with gzip magic bytes should be decompressed transparently.
+        $path = $this->tmpDir . '/payload.bin';
+        file_put_contents($path, gzencode(json_encode(['source' => 'magic'])));
+        $args   = new Args(['--file=' . $path]);
+        $result = PayloadLoader::load($args);
+        $this->assertSame('magic', $result['source']);
+    }
+
+    public function testGzFileWithValidContent(): void
+    {
+        // Redundant guard: .gz extension + valid content works end-to-end.
+        $path = $this->tmpDir . '/data2.json.gz';
+        file_put_contents($path, gzencode(json_encode(['ok' => true])));
+        $args   = new Args(['--file=' . $path]);
+        $result = PayloadLoader::load($args);
+        $this->assertTrue($result['ok']);
+    }
+
+    public function testSymlinkIsRejected(): void
+    {
+        $realFile = $this->tmpDir . '/real.json';
+        $linkFile = $this->tmpDir . '/link.json';
+        file_put_contents($realFile, json_encode(['ok' => true]));
+        symlink($realFile, $linkFile);
+
+        $this->expectException(PayloadException::class);
+        $args = new Args(['--file=' . $linkFile]);
+        PayloadLoader::load($args);
+    }
+
+    public function testLargeFileIsAcceptedWithoutSizeLimit(): void
+    {
+        // DESIGN.md: no size limit for trusted-boundary CLI usage.
+        // Write a file just over 10 MB to ensure no cap is applied.
+        $path = $this->tmpDir . '/large.json';
+        $bigString = str_repeat('x', 10 * 1024 * 1024 + 1);
+        // Wrap in a valid JSON structure so decoding succeeds.
+        $json = json_encode(['data' => $bigString]);
+        file_put_contents($path, $json);
+
+        $args   = new Args(['--file=' . $path]);
+        $result = PayloadLoader::load($args);
+        $this->assertArrayHasKey('data', $result);
     }
 }
