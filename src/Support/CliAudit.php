@@ -64,6 +64,7 @@ class CliAudit
     public function finish(int $exitCode, array $summary = []): void
     {
         if (!class_exists('HFCM_Takumi_API_Audit_Logger')) {
+            error_log('[hfcm-cli] Audit_Logger class not loaded; audit record skipped');
             return;
         }
 
@@ -76,10 +77,23 @@ class CliAudit
             'summary'     => $summary,
         ]);
 
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            // Fallback: encode with partial output on error to avoid passing false to Logger.
+            $json = json_encode(
+                array_merge($this->meta, [
+                    'exit_code'    => $exitCode,
+                    'duration_ms'  => $durationMs,
+                    'encode_error' => json_last_error_msg(),
+                ]),
+                JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR
+            ) ?: '{"error":"json_encode_failed"}';
+        }
+
         \HFCM_Takumi_API_Audit_Logger::log(
             'cli:' . $this->command,
             $status,
-            json_encode($payload, JSON_UNESCAPED_UNICODE)
+            $json
         );
     }
 }
