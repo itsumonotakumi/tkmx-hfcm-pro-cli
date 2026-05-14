@@ -14,6 +14,14 @@ class SnippetsDelete extends AbstractCommand
         return 'snippets:delete';
     }
 
+    public function run(Args $args): int
+    {
+        // Bulk delete (--ids) requires the execution lock; single delete (--id) does not.
+        // Mirror: REST layer does not lock on single delete either.
+        $this->requiresLock = $args->getString('ids') !== '';
+        return parent::run($args);
+    }
+
     protected function execute(Args $args): int
     {
         $singleId = $args->getString('id');
