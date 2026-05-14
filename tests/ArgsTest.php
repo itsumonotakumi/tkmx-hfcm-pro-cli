@@ -76,4 +76,87 @@ class ArgsTest extends TestCase
         $args = new Args(['foo', 'bar', '--flag']);
         $this->assertSame(['foo', 'bar'], $args->allPositional());
     }
+
+    public function testGetStringReturnsFallbackWhenOptionIsBoolFlag(): void
+    {
+        // --pretty is a flag (stored as true), getString should return the default.
+        $args = new Args(['--pretty']);
+        $this->assertSame('default', $args->getString('pretty', 'default'));
+    }
+
+    public function testGetBoolReturnsFalseForAbsentKey(): void
+    {
+        $args = new Args([]);
+        $this->assertFalse($args->getBool('nonexistent'));
+    }
+
+    public function testShortOptionAtEndOfArgvTreatedAsFlag(): void
+    {
+        // -k with no following token (end of argv) — stored as true.
+        $args = new Args(['-k']);
+        $this->assertTrue($args->getBool('k'));
+    }
+
+    public function testLongOptionValueIsNextTokenEvenIfNumeric(): void
+    {
+        // --page 3 (space-separated, numeric value)
+        $args = new Args(['--page', '3']);
+        $this->assertSame(3, $args->getInt('page'));
+    }
+
+    public function testLongOptionFollowedByAnotherOptionIsFlag(): void
+    {
+        // --pretty --format=json: --pretty has no value, should be bool flag.
+        $args = new Args(['--pretty', '--format=json']);
+        $this->assertTrue($args->getBool('pretty'));
+        $this->assertSame('json', $args->getString('format'));
+    }
+
+    public function testToRedactedArrayRedactsPassword(): void
+    {
+        $args     = new Args(['--password=secret123', '--format=json']);
+        $redacted = $args->toRedactedArray();
+        $this->assertSame('[REDACTED]', $redacted['password']);
+        $this->assertSame('json', $redacted['format']);
+    }
+
+    public function testToRedactedArrayRedactsSecret(): void
+    {
+        $args     = new Args(['--secret=abc', '--out=file.json']);
+        $redacted = $args->toRedactedArray();
+        $this->assertSame('[REDACTED]', $redacted['secret']);
+        $this->assertSame('file.json', $redacted['out']);
+    }
+
+    public function testToRedactedArrayRedactsToken(): void
+    {
+        $args     = new Args(['--token=xyz']);
+        $redacted = $args->toRedactedArray();
+        $this->assertSame('[REDACTED]', $redacted['token']);
+    }
+
+    public function testGetIntReturnsDefaultForNonNumericValue(): void
+    {
+        $args = new Args(['--page=notanumber']);
+        $this->assertSame(0, $args->getInt('page'));
+        $this->assertSame(5, $args->getInt('page', 5));
+    }
+
+    public function testMultipleParsedOptions(): void
+    {
+        $args = new Args(['--format=json', '--pretty', '--quiet', '--page=2']);
+        $this->assertSame('json', $args->getString('format'));
+        $this->assertTrue($args->getBool('pretty'));
+        $this->assertTrue($args->getBool('quiet'));
+        $this->assertSame(2, $args->getInt('page'));
+    }
+
+    public function testPositionalInterspersedWithOptions(): void
+    {
+        // Positionals are collected; options are parsed.
+        $args = new Args(['snippets:delete', '--id=42', 'extra']);
+        $this->assertSame('snippets:delete', $args->positional(0));
+        $this->assertSame('extra', $args->positional(1));
+        $this->assertSame('42', $args->getString('id'));
+    }
 }
