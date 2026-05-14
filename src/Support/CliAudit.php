@@ -9,6 +9,9 @@ use Tkmx\HfcmCli\Console\Args;
 /**
  * Wraps HFCM_Takumi_API_Audit_Logger::log() for CLI invocations.
  * Records actor (UNIX user + WP user_login), command, redacted args, result.
+ *
+ * Only one real DB record is written: at finish() time (success or error).
+ * This keeps audit logs clean — no spurious 500-status "start" entries.
  */
 class CliAudit
 {
@@ -25,30 +28,37 @@ class CliAudit
     }
 
     /**
-     * Log start of command execution.
+     * Record command start context (stored in memory; not written to DB).
+     *
      * @param array<string, mixed> $redactedArgs
-     * @param array<string, mixed> $extra  e.g. ['actor' => ..., 'impersonated' => ...]
+     * @param array<string, mixed> $extra  e.g. ['actor' => ..., 'impersonated_login' => ...]
      */
     public function start(array $redactedArgs, array $extra = []): void
     {
-        $this->meta = array_merge([
-            'unix_user'      => get_current_user() ?: posix_getlogin(),
-            'redacted_args'  => $redactedArgs,
-        ], $extra);
-
-        if (!class_exists('HFCM_Takumi_API_Audit_Logger')) {
-            return;
+        // Collect UNIX user and WP user_login.
+        $unixUser = get_current_user() ?: (function_exists('posix_getlogin') ? posix_getlogin() : '');
+        $wpLogin  = '';
+        if (function_exists('wp_get_current_user')) {
+            $wpUser  = wp_get_current_user();
+            $wpLogin = $wpUser->user_login ?? '';
         }
 
-        \HFCM_Takumi_API_Audit_Logger::log(
-            'cli:' . $this->command,
-            'info',
-            json_encode(array_merge(['event' => 'start'], $this->meta), JSON_UNESCAPED_UNICODE)
-        );
+        $this->meta = array_merge([
+            'unix_user'    => $unixUser,
+            'wp_user_login' => $wpLogin,
+            'redacted_args' => $redactedArgs,
+        ], $extra);
+
+        // No DB write here — avoids 'info' status causing 500-coded audit rows.
+        // The audit record is written once at finish().
+        if (!class_exists('HFCM_Takumi_API_Audit_Logger')) {
+            error_log('[hfcm-cli] Warning: HFCM_Takumi_API_Audit_Logger not loaded; audit logging is disabled.');
+        }
     }
 
     /**
-     * Log finish of command execution.
+     * Write the single audit record for this command invocation.
+     *
      * @param array<string, mixed> $summary
      */
     public function finish(int $exitCode, array $summary = []): void
@@ -61,7 +71,6 @@ class CliAudit
         $status     = $exitCode === 0 ? 'success' : 'error';
 
         $payload = array_merge($this->meta, [
-            'event'       => 'finish',
             'exit_code'   => $exitCode,
             'duration_ms' => $durationMs,
             'summary'     => $summary,

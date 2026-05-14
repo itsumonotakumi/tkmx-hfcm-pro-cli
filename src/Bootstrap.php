@@ -9,6 +9,14 @@ use Tkmx\HfcmCli\Console\ExitCode;
 class Bootstrap
 {
     /**
+     * Actor context populated during init(); consumed by CliAudit::start().
+     * Keys: unix_user, wp_user_login, impersonated_login (null if not impersonating).
+     *
+     * @var array{unix_user: string, wp_user_login: string, impersonated_login: string|null}|null
+     */
+    private static ?array $actorContext = null;
+
+    /**
      * Initialise the WordPress environment and establish a user context.
      *
      * @param list<string> $argv
@@ -18,7 +26,12 @@ class Bootstrap
         // Parse --as early so we can validate HFCM_CLI_ALLOW_AS before WP loads.
         $asLogin = self::extractFlag($argv, '--as');
 
-        if ($asLogin !== null && !getenv('HFCM_CLI_ALLOW_AS')) {
+        // Strict check: only literal '1' enables impersonation.
+        $allowAsEnv    = getenv('HFCM_CLI_ALLOW_AS');
+        $allowAsDefine = defined('HFCM_CLI_ALLOW_AS') ? constant('HFCM_CLI_ALLOW_AS') : null;
+        $allowAs       = ('1' === (string) $allowAsEnv) || ('1' === (string) $allowAsDefine);
+
+        if ($asLogin !== null && !$allowAs) {
             fwrite(STDERR, "Error: --as requires HFCM_CLI_ALLOW_AS=1 to be set\n");
             exit(ExitCode::USAGE);
         }
@@ -30,7 +43,7 @@ class Bootstrap
             require $localConfig;
         }
 
-        // Locate and load wp-load.php (up to 3 levels above this directory).
+        // Locate and load wp-load.php (up to 4 levels above this directory).
         $wpLoad = self::findWpLoad(__DIR__ . '/../..');
         if ($wpLoad === null) {
             fwrite(STDERR, "Error: wp-load.php not found. Place tkmx-hfcm-pro-cli/ inside your WordPress root.\n");
@@ -69,24 +82,47 @@ class Bootstrap
             exit(ExitCode::FORBIDDEN);
         }
 
+        // Validate against allowlist when HFCM_CLI_ALLOWED_AS_USERS is defined.
+        if ($asLogin !== null && defined('HFCM_CLI_ALLOWED_AS_USERS')) {
+            $allowedUsers = HFCM_CLI_ALLOWED_AS_USERS;
+            if (is_array($allowedUsers) && count($allowedUsers) > 0) {
+                if (!in_array($asLogin, $allowedUsers, true)) {
+                    fwrite(STDERR, "Error: User '" . addslashes($asLogin) . "' is not in HFCM_CLI_ALLOWED_AS_USERS allowlist.\n");
+                    exit(ExitCode::FORBIDDEN);
+                }
+            }
+        }
+
         $user = get_user_by('login', $targetLogin);
         if (!$user) {
-            fwrite(STDERR, "Error: WordPress user not found: {$targetLogin}\n");
+            fwrite(STDERR, "Error: WordPress user not found: " . addslashes($targetLogin) . "\n");
             exit(ExitCode::FORBIDDEN);
         }
 
         wp_set_current_user($user->ID);
 
-        if (!current_user_can('manage_options')) {
-            fwrite(STDERR, "Error: User '{$targetLogin}' does not have manage_options capability.\n");
-            exit(ExitCode::FORBIDDEN);
-        }
+        // Capability check is delegated to AbstractCommand::run() per command's
+        // requiredCap property. Bootstrap only ensures the user is valid.
+        // (read-only commands like list/get require 'read', not 'manage_options'.)
 
-        // Record impersonation in audit if --as was used.
-        if ($asLogin !== null && $asLogin !== ($defaultUser ?: '')) {
-            // Stored for CliAudit to pick up if needed.
-            // The actual audit happens per-command in AbstractCommand.
-        }
+        // Record actor context for CliAudit.
+        $unixUser = get_current_user() ?: (function_exists('posix_getlogin') ? @posix_getlogin() : '');
+        self::$actorContext = [
+            'unix_user'          => (string) $unixUser,
+            'wp_user_login'      => $user->user_login,
+            'impersonated_login' => ($asLogin !== null && $asLogin !== ($defaultUser ?: '')) ? $asLogin : null,
+        ];
+    }
+
+    /**
+     * Return the actor context populated during init().
+     * Called by AbstractCommand to pass impersonation info to CliAudit::start().
+     *
+     * @return array{unix_user: string, wp_user_login: string, impersonated_login: string|null}|null
+     */
+    public static function getActorContext(): ?array
+    {
+        return self::$actorContext;
     }
 
     /**
@@ -115,20 +151,28 @@ class Bootstrap
 
     /**
      * Validate that config file is owned by the current process user and mode 0600.
+     * Rejects symlinks. Performs a basic TOCTOU guard by re-stat after first check.
      */
     private static function validateConfigFile(string $path): void
     {
         if (!function_exists('posix_getuid')) {
-            return; // Skip on non-POSIX systems.
+            fwrite(STDERR, "Error: POSIX拡張が必要。config/cli.local.php の権限検証を実行できません。\n");
+            exit(ExitCode::FORBIDDEN);
         }
 
-        $stat = stat($path);
-        if ($stat === false) {
+        // Reject symlinks (lstat checks the link itself, not the target).
+        if (is_link($path)) {
+            fwrite(STDERR, "Error: config/cli.local.php はシンボリックリンクであってはなりません\n");
+            exit(ExitCode::FORBIDDEN);
+        }
+
+        $stat1 = @lstat($path);
+        if ($stat1 === false) {
             fwrite(STDERR, "Error: cannot stat config file: {$path}\n");
             exit(ExitCode::FORBIDDEN);
         }
 
-        $fileOwner    = $stat['uid'];
+        $fileOwner    = $stat1['uid'];
         $processOwner = posix_getuid();
 
         if ($fileOwner !== $processOwner) {
@@ -136,15 +180,24 @@ class Bootstrap
             exit(ExitCode::FORBIDDEN);
         }
 
-        $mode = $stat['mode'] & 0777;
+        $mode = $stat1['mode'] & 0777;
         if ($mode !== 0600) {
             fwrite(STDERR, sprintf("Error: config/cli.local.php must have mode 0600 (found: %04o)\n", $mode));
+            exit(ExitCode::FORBIDDEN);
+        }
+
+        // TOCTOU guard: re-stat and confirm inode has not changed.
+        $stat2 = @lstat($path);
+        if ($stat2 === false || $stat2['ino'] !== $stat1['ino'] || $stat2['dev'] !== $stat1['dev']) {
+            fwrite(STDERR, "Error: config/cli.local.php changed between permission checks (possible TOCTOU attack)\n");
             exit(ExitCode::FORBIDDEN);
         }
     }
 
     /**
      * Extract a named flag value from argv (e.g. --as=admin or --as admin).
+     * Treats a lone '-' token as a value (e.g. --file -).
+     *
      * @param list<string> $argv
      */
     private static function extractFlag(array $argv, string $flag): ?string
@@ -155,7 +208,11 @@ class Bootstrap
                 return substr($token, strlen($prefix));
             }
             if ($token === $flag && isset($argv[$i + 1])) {
-                return $argv[$i + 1];
+                $next = $argv[$i + 1];
+                // Accept lone '-' as value; reject other flag tokens.
+                if ($next === '-' || !str_starts_with($next, '-')) {
+                    return $next;
+                }
             }
         }
         return null;
