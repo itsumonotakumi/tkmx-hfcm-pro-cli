@@ -81,6 +81,9 @@ if (!function_exists('get_transient')) {
 if (!function_exists('set_transient')) {
     function set_transient(string $key, mixed $value, int $expiration = 0): bool
     {
+        if (!($GLOBALS['_hfcm_set_transient_return'] ?? true)) {
+            return false;
+        }
         TransientStore::$transients[$key] = $value;
         return true;
     }
@@ -148,4 +151,40 @@ if (!function_exists('get_current_user')) {
     {
         return $GLOBALS['_hfcm_unix_user'] ?? 'cli-user';
     }
+}
+
+// ---------------------------------------------------------------------------
+// HFCM_Takumi_API_Audit_Logger stub for CliAudit tests.
+// Recorded calls available via AuditLoggerStub::$calls; reset via ::reset().
+// ---------------------------------------------------------------------------
+if (!class_exists('AuditLoggerStub')) {
+    class AuditLoggerStub
+    {
+        /** @var list<array{action: string, status: string, payload: string}> */
+        public static array $calls = [];
+
+        public static function reset(): void
+        {
+            self::$calls = [];
+        }
+    }
+}
+
+if (!class_exists('HFCM_Takumi_API_Audit_Logger')) {
+    class HFCM_Takumi_API_Audit_Logger
+    {
+        public static function log(string $action, string $status, string $payload): void
+        {
+            AuditLoggerStub::$calls[] = [
+                'action'  => $action,
+                'status'  => $status,
+                'payload' => $payload,
+            ];
+        }
+    }
+}
+
+// set_transient stub control: set to false to simulate failure.
+if (!isset($GLOBALS['_hfcm_set_transient_return'])) {
+    $GLOBALS['_hfcm_set_transient_return'] = true;
 }
