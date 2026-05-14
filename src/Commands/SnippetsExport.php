@@ -27,17 +27,28 @@ class SnippetsExport extends AbstractCommand
             return ExitCode::USAGE;
         }
 
-        $outPath = $args->getString('out', '');
+        $outPath  = $args->getString('out', '');
+        $force    = $args->getBool('force');
 
         // Validate --out path before running the export.
         if ($outPath !== '') {
-            if (is_file($outPath)) {
+            // Reject symlinks unconditionally (even with --force).
+            if (is_link($outPath)) {
                 $this->output->error(
-                    ['code' => 'file_exists', 'message' => "Output file already exists: {$outPath}. Remove it first."],
-                    "Output file already exists: {$outPath}. Remove it first."
+                    ['code' => 'symlink_rejected', 'message' => "Output path must not be a symlink: {$outPath}"],
+                    "Output path must not be a symlink: {$outPath}"
                 );
                 return ExitCode::ERROR;
             }
+
+            if (file_exists($outPath) && !$force) {
+                $this->output->error(
+                    ['code' => 'file_exists', 'message' => "Output file already exists: {$outPath}. Use --force to overwrite."],
+                    "Output file already exists: {$outPath}. Use --force to overwrite."
+                );
+                return ExitCode::ERROR;
+            }
+
             $dir = dirname($outPath);
             if (!is_writable($dir)) {
                 $this->output->error(
@@ -77,12 +88,36 @@ class SnippetsExport extends AbstractCommand
         }
 
         if ($outPath !== '') {
-            // Write to file.
+            // Write to file atomically via fopen with 'xb' (O_CREAT|O_EXCL) to
+            // prevent TOCTOU attacks between the existence check and write.
+            // With --force, remove the existing file first then open exclusively.
+            if ($force && file_exists($outPath)) {
+                if (!unlink($outPath)) {
+                    $this->output->error(
+                        ['code' => 'write_error', 'message' => "Failed to remove existing file: {$outPath}"],
+                        "Failed to remove existing file: {$outPath}"
+                    );
+                    return ExitCode::ERROR;
+                }
+            }
+
+            $fh = fopen($outPath, 'xb');
+            if ($fh === false) {
+                $this->output->error(
+                    ['code' => 'write_error', 'message' => "Failed to create output file (may already exist): {$outPath}"],
+                    "Failed to create output file (may already exist): {$outPath}"
+                );
+                return ExitCode::ERROR;
+            }
+
             $content = $format === 'json'
                 ? json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
                 : $result;
 
-            if (file_put_contents($outPath, $content) === false) {
+            $written = fwrite($fh, (string) $content);
+            fclose($fh);
+
+            if ($written === false) {
                 $this->output->error(
                     ['code' => 'write_error', 'message' => "Failed to write to: {$outPath}"],
                     "Failed to write to: {$outPath}"
