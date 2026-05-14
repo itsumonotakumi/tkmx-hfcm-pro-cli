@@ -118,7 +118,7 @@ class Args
      */
     public function toRedactedArray(): array
     {
-        $sensitive = ['data', 'password', 'secret', 'token', 'key', 'auth', 'credential', 'apikey', 'api_key', 'authorization', 'bearer'];
+        $sensitive = ['data', 'password', 'secret', 'token', 'key', 'auth', 'credential', 'apikey', 'api_key', 'authorization', 'bearer', 'file', 'out'];
         $out = [];
         foreach ($this->options as $k => $v) {
             $out[$k] = in_array($k, $sensitive, true) ? '[REDACTED]' : $v;
