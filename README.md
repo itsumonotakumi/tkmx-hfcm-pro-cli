@@ -177,6 +177,12 @@ Exceeding limits → exit 1 + `payload_too_large` error.
 
 `bulk-upsert` and `import` acquire the `hfcm_import_lock` transient (TTL 5 min), the same key used by the REST API. CLI and REST are mutually exclusive — if one is running the other exits with code 75.
 
+### Persistent Object Cache environments (Redis Object Cache etc.)
+
+When a persistent object cache (Redis, Memcached) is active, `set_transient()` called by the REST layer may write only to the cache and **not** to `wp_options`. The CLI uses `add_option()` which always writes directly to the database, so the REST layer may not observe the CLI lock via `get_transient()` if the cache doesn't fall back to the DB.
+
+**Recommendation**: In Redis Object Cache or similar environments, ensure the REST layer (TKMX-HFCM-Pro-API) also uses an `add_option`-based atomic lock (follow-up PR). Until that follow-up is applied, avoid concurrent CLI and REST bulk operations in persistent-cache environments.
+
 ## Audit Logging
 
 Every CLI invocation is recorded in `wp_hfcm_takumi_audit_logs` with:
