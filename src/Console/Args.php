@@ -38,9 +38,12 @@ class Args
 
             // --key value or --flag
             if (str_starts_with($token, '--')) {
-                $key = substr($token, 2);
-                if (isset($argv[$i + 1]) && !str_starts_with($argv[$i + 1], '-')) {
-                    $this->options[$key] = $argv[$i + 1];
+                $key  = substr($token, 2);
+                $next = $argv[$i + 1] ?? null;
+                // Accept lone '-' as a value (e.g. --file - means STDIN).
+                // Reject tokens starting with '-' that are not lone '-' (those are flags).
+                if ($next !== null && ($next === '-' || !str_starts_with($next, '-'))) {
+                    $this->options[$key] = $next;
                     $i += 2;
                 } else {
                     $this->options[$key] = true;
@@ -49,11 +52,12 @@ class Args
                 continue;
             }
 
-            // -k value
+            // -k value (single-char short option)
             if (str_starts_with($token, '-') && strlen($token) === 2) {
-                $key = substr($token, 1);
-                if (isset($argv[$i + 1]) && !str_starts_with($argv[$i + 1], '-')) {
-                    $this->options[$key] = $argv[$i + 1];
+                $key  = substr($token, 1);
+                $next = $argv[$i + 1] ?? null;
+                if ($next !== null && ($next === '-' || !str_starts_with($next, '-'))) {
+                    $this->options[$key] = $next;
                     $i += 2;
                 } else {
                     $this->options[$key] = true;
@@ -114,7 +118,7 @@ class Args
      */
     public function toRedactedArray(): array
     {
-        $sensitive = ['data', 'password', 'secret', 'token'];
+        $sensitive = ['data', 'password', 'secret', 'token', 'key', 'auth', 'credential', 'apikey', 'api_key', 'authorization', 'bearer'];
         $out = [];
         foreach ($this->options as $k => $v) {
             $out[$k] = in_array($k, $sensitive, true) ? '[REDACTED]' : $v;
