@@ -9,6 +9,10 @@
  *
  * Bootstrap validates: file owned by process user AND mode exactly 0600.
  * Any mismatch causes exit 4 (FORBIDDEN).
+ *
+ * **IMPORTANT: このファイルは array を return するだけにせよ。副作用禁止（DB/IO等）。**
+ * define() による定数定義は許可（config 専用）。ファイル末尾に必ず `return [];` を記述すること。
+ * return が array でない場合 Bootstrap が exit 4 で終了する。
  */
 
 // ---------------------------------------------------------------------------
@@ -30,3 +34,9 @@ define('HFCM_CLI_DEFAULT_USER', 'admin');
 // Leave empty or unset to allow any user (subject to their own WP capabilities).
 // ---------------------------------------------------------------------------
 // define('HFCM_CLI_ALLOWED_AS_USERS', ['admin', 'editor']);
+
+// ---------------------------------------------------------------------------
+// Required: this file must return an array. Do NOT add DB/IO side-effects.
+// Bootstrap will exit 4 (FORBIDDEN) if this file does not return an array.
+// ---------------------------------------------------------------------------
+return [];

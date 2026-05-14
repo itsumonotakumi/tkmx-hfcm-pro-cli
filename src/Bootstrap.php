@@ -37,10 +37,16 @@ class Bootstrap
         }
 
         // Load config/cli.local.php if present (validated for permissions first).
+        // The file MUST return an array (any array is acceptable, including empty).
+        // Side-effects such as DB/IO operations are forbidden inside the config file.
         $localConfig = __DIR__ . '/../config/cli.local.php';
         if (file_exists($localConfig)) {
             self::validateConfigFile($localConfig);
-            require $localConfig;
+            $cfg = require $localConfig;
+            if (!is_array($cfg)) {
+                fwrite(STDERR, "Error: config/cli.local.php must return an array (e.g. return [];). Side-effects (DB/IO etc.) are forbidden.\n");
+                exit(ExitCode::FORBIDDEN);
+            }
         }
 
         // Locate and load wp-load.php (up to 4 levels above this directory).
