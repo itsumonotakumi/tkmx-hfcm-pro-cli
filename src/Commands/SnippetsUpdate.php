@@ -17,14 +17,25 @@ class SnippetsUpdate extends AbstractCommand
     protected function commandName(): string
     {
         // Distinguish patch vs put in audit logs for traceability.
-        // commandName() is called from run() which also holds $args, but the
-        // abstract signature does not accept args. Read from raw argv instead;
-        // this is called once per invocation so the overhead is negligible.
-        foreach ($_SERVER['argv'] ?? [] as $token) {
-            if ($token === '--mode=patch') {
+        // commandName() is called from run(); the abstract signature does not
+        // accept Args, so we read raw argv. Called once per invocation.
+        $argv = $_SERVER['argv'] ?? [];
+
+        // Case 1: user invoked 'snippets:patch' route (argv[1]).
+        if (($argv[1] ?? '') === 'snippets:patch') {
+            return 'snippets:patch';
+        }
+
+        // Case 2: user invoked 'snippets:update --mode=patch' or '--mode patch'.
+        foreach ($argv as $i => $tok) {
+            if ($tok === '--mode=patch') {
+                return 'snippets:patch';
+            }
+            if ($tok === '--mode' && ($argv[$i + 1] ?? '') === 'patch') {
                 return 'snippets:patch';
             }
         }
+
         return 'snippets:update';
     }
 
