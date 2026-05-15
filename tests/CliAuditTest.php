@@ -113,11 +113,11 @@ echo "\nTest 5: redacted args in payload\n";
 {
     AuditLoggerStub::reset();
     $audit = new CliAudit('snippets:create');
-    $audit->start(['data' => '[REDACTED]', 'format' => 'json'], []);
+    $audit->start(['data' => '[編集済]', 'format' => 'json'], []);
     $audit->finish(0);
 
     $payload = json_decode(AuditLoggerStub::$calls[0]['payload'], true);
-    assert_equals('[REDACTED]', $payload['redacted_args']['data'], 'data value is REDACTED in audit');
+    assert_equals('[編集済]', $payload['redacted_args']['data'], 'data value is [編集済] in audit');
     assert_equals('json', $payload['redacted_args']['format'], 'format value passes through');
 }
 
