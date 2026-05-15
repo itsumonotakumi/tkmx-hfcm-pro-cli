@@ -109,4 +109,47 @@ class ExecutionLockTest extends TestCase
         // Second attempt: transient already set → returns false.
         $this->assertFalse(ExecutionLock::acquire());
     }
+
+    // -----------------------------------------------------------------------
+    // refresh() tests
+    // -----------------------------------------------------------------------
+
+    public function testRefreshReturnsTrueWhenOwner(): void
+    {
+        $this->assertTrue(ExecutionLock::acquire());
+        // Should reset TTL and return true while we still own the lock.
+        $this->assertTrue(ExecutionLock::refresh());
+        // Lock must still be held after refresh.
+        $this->assertTrue(ExecutionLock::isLocked());
+    }
+
+    public function testRefreshReturnsFalseWhenNotAcquired(): void
+    {
+        // Never called acquire() — ownerToken is null.
+        $this->assertFalse(ExecutionLock::refresh());
+    }
+
+    public function testRefreshReturnsFalseOnOwnerMismatch(): void
+    {
+        $this->assertTrue(ExecutionLock::acquire());
+
+        // Overwrite the stored option with a foreign token (race simulation).
+        TransientStore::$options['_transient_hfcm_import_lock'] = 'foreign_token_99999';
+
+        // refresh() detects mismatch and returns false.
+        $this->assertFalse(ExecutionLock::refresh());
+    }
+
+    public function testRefreshExtendsLockTtl(): void
+    {
+        $this->assertTrue(ExecutionLock::acquire());
+
+        // Simulate TTL expiry by removing the transient only (option stays).
+        unset(TransientStore::$transients['hfcm_import_lock']);
+        $this->assertFalse(ExecutionLock::isLocked());
+
+        // refresh() re-sets the transient.
+        $this->assertTrue(ExecutionLock::refresh());
+        $this->assertTrue(ExecutionLock::isLocked());
+    }
 }

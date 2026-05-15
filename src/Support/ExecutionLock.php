@@ -96,6 +96,31 @@ class ExecutionLock
     }
 
     /**
+     * このプロセスが所有するロックの TTL をリセットし、二重実行を防ぐ
+     *
+     * bulk-upsert / import のような長時間処理で TTL=300s を超えないよう、
+     * N 件ごとや一定時間間隔で呼び出す。owner_token が一致しない場合は
+     * false を返し、呼び出し元は処理を中断すべき。
+     *
+     * @return bool このプロセスがオーナーであり TTL のリセットに成功した場合 true
+     */
+    public static function refresh(): bool
+    {
+        if (self::$ownerToken === null) {
+            return false;
+        }
+
+        // オーナー検証: 保存されているトークンが自プロセスのものか確認
+        $current = get_option(self::OPTION_KEY);
+        if ($current !== self::$ownerToken) {
+            return false;
+        }
+
+        // トランジェント TTL をリセット（REST レイヤーからも見えるように）
+        return (bool) set_transient(self::TRANSIENT_KEY, self::$ownerToken, self::TTL);
+    }
+
+    /**
      * ロックが現在保持されているかをチェック（任意のプロセスで）
      */
     public static function isLocked(): bool
