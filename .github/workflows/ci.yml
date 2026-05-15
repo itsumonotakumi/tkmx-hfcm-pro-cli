@@ -10,6 +10,7 @@ jobs:
   test:
     name: PHP ${{ matrix.php }} tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       matrix:
         php: ["8.1", "8.2", "8.3"]
@@ -23,22 +24,22 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, mbstring, xml, json, simplexml, tokenizer
+          extensions: dom, mbstring, xml, json, simplexml, tokenizer, ctype, xmlwriter
           coverage: xdebug
 
       - name: Syntax check (src, tests, bin)
         run: find src tests bin -name '*.php' -exec php -l {} \;
 
-      - name: Download PHPUnit 10 phar
+      - name: Download PHPUnit
         run: |
-          wget -q https://phar.phpunit.de/phpunit-10.phar
-          chmod +x phpunit-10.phar
-          php phpunit-10.phar --version
+          wget -q https://phar.phpunit.de/phpunit-10.5.45.phar
+          wget -q https://phar.phpunit.de/phpunit-10.5.45.phar.sha256
+          sha256sum -c phpunit-10.5.45.phar.sha256
+          chmod +x phpunit-10.5.45.phar
+          php phpunit-10.5.45.phar --version
 
       - name: Run PHPUnit 10
-        run: php phpunit-10.phar --configuration phpunit.xml --coverage-text
-        continue-on-error: true
+        run: php phpunit-10.5.45.phar --configuration phpunit.xml --coverage-text
 
       - name: Run legacy bootstrap driver (regression guard)
         run: php tests/bootstrap.php
-        continue-on-error: true
