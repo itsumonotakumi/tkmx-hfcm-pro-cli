@@ -190,22 +190,60 @@ HFCM_CLI_ALLOW_AS=1 ./bin/hfcm snippets:create --as=subscriber --data='...'
 - `user_login`: 実行中の WP ユーザー
 - `--as` 使用時の成り済まし詳細
 
+## PHP 拡張要件
+
+テスト実行・CI に必要な PHP 拡張モジュール：
+
+| 拡張 | 用途 |
+|------|------|
+| `dom` | XML/HTML 解析 |
+| `mbstring` | マルチバイト文字列処理 |
+| `xml` | XML パース基盤 |
+| `json` | JSON エンコード・デコード |
+| `simplexml` | SimpleXML ベース処理 |
+| `tokenizer` | PHPUnit 内部トークナイザ |
+| `posix` | 設定ファイル所有者検証（本番動作用） |
+
 ## テスト実行
 
-PHPUnit 10+ を別途インストール（CLI 運用には composer 不要）：
+### ローカル PHPUnit 実行
+
+composer 不要。PHPUnit 10 phar をダウンロードして実行：
 
 ```bash
-# PHPUnit をグローバルまたはローカルにインストール
-composer global require phpunit/phpunit:^10
+# PHPUnit 10 phar をダウンロード
+wget https://phar.phpunit.de/phpunit-10.phar
+chmod +x phpunit-10.phar
 
 # テストを実行（WordPress 不要 — WP_Error はスタブ化）
-phpunit --configuration phpunit.xml
+php phpunit-10.phar --configuration phpunit.xml
 
-# またはローカルの phpunit phar を使用
-php phpunit.phar --configuration phpunit.xml
+# カバレッジレポート付き（Xdebug が必要）
+php phpunit-10.phar --configuration phpunit.xml --coverage-text
+
+# または composer でグローバルインストール済みの場合
+phpunit --configuration phpunit.xml
 ```
 
-テスト対象: `Args`、`Output`、`ExitCode`、`WpErrorFormatter`、`PayloadLoader`（gzip・サイズ上限を含む）。
+テスト対象: `Args`、`Output`、`ExitCode`、`WpErrorFormatter`、`PayloadLoader`（gzip・サイズ上限を含む）、`Router`、`ExecutionLock`、`CliAudit`、`AbstractCommand`。
+
+### レガシー bootstrap ドライバ
+
+独自 CLI ドライバによる回帰テスト（PHPUnit 不要）：
+
+```bash
+php tests/bootstrap.php
+```
+
+## CI
+
+GitHub Actions で PHP 8.1 / 8.2 / 8.3 のマトリクスビルドを実行：
+
+- **構文チェック**: `php -l` を `src/`・`tests/`・`bin/` 全体に適用
+- **PHPUnit 10**: phar ダウンロード方式、`--coverage-text` でカバレッジ表示（Xdebug 使用）
+- **レガシードライバ**: `tests/bootstrap.php` を別ステップで実行（回帰防止）
+
+ワークフロー定義: `.github/workflows/ci.yml`
 
 ## トラブルシューティング
 
