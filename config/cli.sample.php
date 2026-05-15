@@ -1,7 +1,11 @@
 <?php
 
 /**
- * TKMX HFCM Pro CLI - ローカル設定サンプル
+ * TKMX HFCM Pro CLI - ローカル設定サンプル (PHP 形式)
+ *
+ * @deprecated 新規利用は config/cli.sample.ini を参照してください。
+ *   PHP 形式は後方互換のため維持されていますが、将来のバージョンで削除される予定です。
+ *   移行手順: cp config/cli.sample.ini config/cli.local.ini && chmod 0600 config/cli.local.ini
  *
  * このファイルを config/cli.local.php にコピーし、権限を設定してください:
  *   cp config/cli.sample.php config/cli.local.php

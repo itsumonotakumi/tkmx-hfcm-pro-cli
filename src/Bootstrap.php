@@ -36,13 +36,23 @@ class Bootstrap
             exit(ExitCode::USAGE);
         }
 
-        // config/cli.local.php を読み込み（存在する場合、権限検証をいち早く実施）
-        // ファイルは配列を return する必須（空配列を含む任意の配列が受け入れ可能）
-        // config ファイル内で DB/IO 操作などの副作用は禁止
-        $localConfig = __DIR__ . '/../config/cli.local.php';
-        if (file_exists($localConfig)) {
-            self::validateConfigFile($localConfig);
-            $cfg = require $localConfig;
+        // config/cli.local.ini を優先読み込み。
+        // 不在の場合は cli.local.php にフォールバック（deprecation warning 付き）。
+        $localIni = __DIR__ . '/../config/cli.local.ini';
+        $localPhp = __DIR__ . '/../config/cli.local.php';
+
+        if (file_exists($localIni)) {
+            self::validateConfigFile($localIni, 'cli.local.ini');
+            $cfg = parse_ini_file($localIni, true, INI_SCANNER_TYPED);
+            if ($cfg === false) {
+                fwrite(STDERR, "エラー: config/cli.local.ini のパースに失敗しました。INI 構文を確認してください。\n");
+                exit(ExitCode::FORBIDDEN);
+            }
+            self::applyIniConfig($cfg);
+        } elseif (file_exists($localPhp)) {
+            fwrite(STDERR, "[hfcm-cli] Deprecated: config/cli.local.php は将来のバージョンで削除されます。config/cli.local.ini へ移行してください。\n");
+            self::validateConfigFile($localPhp, 'cli.local.php');
+            $cfg = require $localPhp;
             if (!is_array($cfg)) {
                 fwrite(STDERR, "エラー: config/cli.local.php は配列を return する必要があります（例: return [];）。副作用（DB/IO 等）は禁止です。\n");
                 exit(ExitCode::FORBIDDEN);
@@ -158,17 +168,19 @@ class Bootstrap
     /**
      * config ファイルが現在のプロセスユーザーに所有され、権限が 0600 であることを検証
      * シンボリックリンクを拒否。最初のチェック後に再スタットして基本的な TOCTOU ガードを実施
+     *
+     * @param string $displayName エラーメッセージに表示するファイル名（例: 'cli.local.ini'）
      */
-    private static function validateConfigFile(string $path): void
+    private static function validateConfigFile(string $path, string $displayName = 'cli.local.php'): void
     {
         if (!function_exists('posix_getuid')) {
-            fwrite(STDERR, "Error: POSIX拡張が必要。config/cli.local.php の権限検証を実行できません。\n");
+            fwrite(STDERR, "Error: POSIX拡張が必要。config/{$displayName} の権限検証を実行できません。\n");
             exit(ExitCode::FORBIDDEN);
         }
 
         // シンボリックリンクを拒否（lstat はリンク自体をチェック、ターゲットではない）
         if (is_link($path)) {
-            fwrite(STDERR, "エラー: config/cli.local.php はシンボリックリンクであってはなりません\n");
+            fwrite(STDERR, "エラー: config/{$displayName} はシンボリックリンクであってはなりません\n");
             exit(ExitCode::FORBIDDEN);
         }
 
@@ -182,21 +194,62 @@ class Bootstrap
         $processOwner = posix_getuid();
 
         if ($fileOwner !== $processOwner) {
-            fwrite(STDERR, "エラー: config/cli.local.php は現在のユーザーに所有される必要があります（uid 不一致）\n");
+            fwrite(STDERR, "エラー: config/{$displayName} は現在のユーザーに所有される必要があります（uid 不一致）\n");
             exit(ExitCode::FORBIDDEN);
         }
 
         $mode = $stat1['mode'] & 0777;
         if ($mode !== 0600) {
-            fwrite(STDERR, sprintf("エラー: config/cli.local.php の権限は 0600 である必要があります（実際: %04o）\n", $mode));
+            fwrite(STDERR, sprintf("エラー: config/{$displayName} の権限は 0600 である必要があります（実際: %04o）\n", $mode));
             exit(ExitCode::FORBIDDEN);
         }
 
         // TOCTOU ガード: 再スタットして inode が変更されていないことを確認
         $stat2 = @lstat($path);
         if ($stat2 === false || $stat2['ino'] !== $stat1['ino'] || $stat2['dev'] !== $stat1['dev']) {
-            fwrite(STDERR, "エラー: 権限チェック中に config/cli.local.php が変更されました（可能な TOCTOU 攻撃）\n");
+            fwrite(STDERR, "エラー: 権限チェック中に config/{$displayName} が変更されました（可能な TOCTOU 攻撃）\n");
             exit(ExitCode::FORBIDDEN);
+        }
+    }
+
+    /**
+     * parse_ini_file で読み込んだ設定を PHP 定数にブリッジする。
+     * 既知のキーのみ処理し、未定義の場合のみ define() する（CLI 環境変数 > INI の優先順位を維持）。
+     *
+     * @param array<string, mixed> $cfg parse_ini_file の戻り値（process_sections=true）
+     */
+    private static function applyIniConfig(array $cfg): void
+    {
+        // process_sections=true の場合、セクション名が文字列キーになる。
+        // 既知のキーはトップレベルで直接参照し、セクション内のキーも探索する。
+        // 注意: HFCM_CLI_ALLOWED_AS_USERS は配列値（[] 構文）のため、
+        // セクションと区別するために既知キーリストを先に確認する。
+        $knownKeys = ['HFCM_CLI_DEFAULT_USER', 'HFCM_CLI_ALLOW_AS', 'HFCM_CLI_ALLOWED_AS_USERS'];
+
+        foreach ($knownKeys as $key) {
+            // トップレベルに存在する場合はそのまま使用（セクションなし・フラット INI）
+            if (array_key_exists($key, $cfg)) {
+                $value = $cfg[$key];
+            } else {
+                // セクション配下を探索（セクション値は配列、かつキーが文字列）
+                $value = null;
+                $found = false;
+                foreach ($cfg as $sectionKey => $sectionValue) {
+                    if (is_array($sectionValue) && is_string($sectionKey) && array_key_exists($key, $sectionValue)) {
+                        $value = $sectionValue[$key];
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    continue;
+                }
+            }
+
+            if (defined($key)) {
+                continue; // 環境変数由来の define を上書きしない
+            }
+            define($key, $value);
         }
     }
 
