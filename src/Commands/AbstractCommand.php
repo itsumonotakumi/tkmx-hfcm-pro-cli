@@ -108,6 +108,31 @@ abstract class AbstractCommand
     }
 
     /**
+     * ロックの TTL をリセットする（長時間の bulk ループ向け heartbeat）
+     *
+     * bulk-upsert / import で N 件ごと、または一定時間が経過したときに呼び出す。
+     * owner_token が一致しない（別プロセスが乗っ取った等）場合は false を返すため、
+     * 呼び出し元はループを中断すること。
+     *
+     * 例:
+     *   foreach ($items as $i => $item) {
+     *       $this->process($item);
+     *       if ($i % 100 === 0 && !$this->refreshLock()) {
+     *           throw new \RuntimeException('Lock stolen; aborting.');
+     *       }
+     *   }
+     *
+     * @return bool リフレッシュ成功、またはロック不要なコマンドの場合 true
+     */
+    protected function refreshLock(): bool
+    {
+        if (!$this->requiresLock) {
+            return true;
+        }
+        return ExecutionLock::refresh();
+    }
+
+    /**
      * WP_Error を処理: JSON エラー出力を書き込み、マップされた終了コードを返す
      */
     protected function handleWpError(\WP_Error $error): int

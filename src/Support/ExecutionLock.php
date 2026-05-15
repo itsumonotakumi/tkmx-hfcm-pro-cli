@@ -96,6 +96,42 @@ class ExecutionLock
     }
 
     /**
+     * このプロセスが所有するロックの TTL をリセットし、二重実行を防ぐ
+     *
+     * bulk-upsert / import のような長時間処理で TTL=300s を超えないよう、
+     * N 件ごとや一定時間間隔で呼び出す。owner_token が一致しない場合は
+     * false を返し、呼び出し元は処理を中断すべき。
+     *
+     * TOCTOU 限界: get_option() と set_transient() の間は非 atomic。
+     * 永続オブジェクトキャッシュ（Redis 等）バックエンドでは、owner 検証後に
+     * 別プロセスが acquire() → release() → 再 acquire() を完了した場合、
+     * set_transient() が新オーナーのトランジェントを上書きする余地がある。
+     * ただし fail-close 設計により、set_transient() が false を返した場合は
+     * 直ちに false を返す（ロック喪失として扱う）。また次回の refresh() 呼び出しで
+     * get_option() の owner mismatch を検出し fail-close される。
+     * 権威的なソースはオプションテーブル行（add_option の UNIQUE 制約）であり、
+     * トランジェントは REST 可視性のためのミラーに過ぎない。
+     *
+     * @return bool このプロセスがオーナーであり TTL のリセットに成功した場合 true;
+     *              オーナー不一致・set_transient 失敗いずれの場合も false（fail-close）
+     */
+    public static function refresh(): bool
+    {
+        if (self::$ownerToken === null) {
+            return false;
+        }
+
+        // オーナー検証: 保存されているトークンが自プロセスのものか確認
+        $current = get_option(self::OPTION_KEY);
+        if ($current !== self::$ownerToken) {
+            return false;
+        }
+
+        // トランジェント TTL をリセット（REST レイヤーからも見えるように）
+        return (bool) set_transient(self::TRANSIENT_KEY, self::$ownerToken, self::TTL);
+    }
+
+    /**
      * ロックが現在保持されているかをチェック（任意のプロセスで）
      */
     public static function isLocked(): bool
