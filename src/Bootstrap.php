@@ -249,6 +249,28 @@ class Bootstrap
             if (defined($key)) {
                 continue; // 環境変数由来の define を上書きしない
             }
+
+            // HFCM_CLI_ALLOW_AS: INI_SCANNER_TYPED で boolean に変換された値を拒否。
+            // リテラル '1'（文字列）または 1（整数）のみ有効とし、それ以外は '0' で無効化。
+            if ($key === 'HFCM_CLI_ALLOW_AS') {
+                if ($value === '1' || $value === 1) {
+                    define($key, '1');
+                } else {
+                    fwrite(STDERR, "警告: cli.local.ini: HFCM_CLI_ALLOW_AS に無効な値が指定されました（'1' のみ有効）。偽装を無効化します。\n");
+                    define($key, '0');
+                }
+                continue;
+            }
+
+            // HFCM_CLI_ALLOWED_AS_USERS: 配列以外（スカラー等）は fail-close。
+            // '[] = ' 構文を使わずにスカラーとして書いた場合に素通りする脆弱性を防ぐ。
+            if ($key === 'HFCM_CLI_ALLOWED_AS_USERS') {
+                if (!is_array($value)) {
+                    fwrite(STDERR, "エラー: cli.local.ini: HFCM_CLI_ALLOWED_AS_USERS は配列である必要があります（'HFCM_CLI_ALLOWED_AS_USERS[] = \"username\"' 構文を使用してください）\n");
+                    exit(ExitCode::FORBIDDEN);
+                }
+            }
+
             define($key, $value);
         }
     }
