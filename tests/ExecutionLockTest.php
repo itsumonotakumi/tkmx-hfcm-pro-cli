@@ -152,4 +152,18 @@ class ExecutionLockTest extends TestCase
         $this->assertTrue(ExecutionLock::refresh());
         $this->assertTrue(ExecutionLock::isLocked());
     }
+
+    public function testRefreshReturnsFalseWhenSetTransientFails(): void
+    {
+        $this->assertTrue(ExecutionLock::acquire());
+
+        // Simulate set_transient() failure (e.g. DB/cache error).
+        $GLOBALS['_hfcm_set_transient_return'] = false;
+        try {
+            // refresh() must treat set_transient failure as lock loss (fail-close).
+            $this->assertFalse(ExecutionLock::refresh());
+        } finally {
+            $GLOBALS['_hfcm_set_transient_return'] = true;
+        }
+    }
 }
