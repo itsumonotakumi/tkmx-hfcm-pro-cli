@@ -118,7 +118,7 @@ class Args
      */
     public function toRedactedArray(): array
     {
-        $sensitive = ['data', 'password', 'secret', 'token', 'key', 'auth', 'credential', 'apikey', 'api_key', 'authorization', 'bearer', 'file', 'out'];
+        $sensitive = ['data', 'password', 'secret', 'token', 'key', 'auth', 'credential', 'apikey', 'api_key', 'authorization', 'bearer', 'file', 'out']; // 出力ファイルパスも --out 経由で秘匿パスが渡される可能性があるため含む
         $out = [];
         foreach ($this->options as $k => $v) {
             $out[$k] = in_array($k, $sensitive, true) ? '[編集済]' : $v;

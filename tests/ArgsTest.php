@@ -60,7 +60,7 @@ class ArgsTest extends TestCase
     {
         $args = new Args(['--data={"name":"test"}', '--format=json']);
         $redacted = $args->toRedactedArray();
-        $this->assertSame('[REDACTED]', $redacted['data']);
+        $this->assertSame('[編集済]', $redacted['data']);
         $this->assertSame('json', $redacted['format']);
     }
 
@@ -116,7 +116,7 @@ class ArgsTest extends TestCase
     {
         $args     = new Args(['--password=secret123', '--format=json']);
         $redacted = $args->toRedactedArray();
-        $this->assertSame('[REDACTED]', $redacted['password']);
+        $this->assertSame('[編集済]', $redacted['password']);
         $this->assertSame('json', $redacted['format']);
     }
 
@@ -124,15 +124,15 @@ class ArgsTest extends TestCase
     {
         $args     = new Args(['--secret=abc', '--out=file.json']);
         $redacted = $args->toRedactedArray();
-        $this->assertSame('[REDACTED]', $redacted['secret']);
-        $this->assertSame('file.json', $redacted['out']);
+        $this->assertSame('[編集済]', $redacted['secret']);
+        $this->assertSame('[編集済]', $redacted['out']);
     }
 
     public function testToRedactedArrayRedactsToken(): void
     {
         $args     = new Args(['--token=xyz']);
         $redacted = $args->toRedactedArray();
-        $this->assertSame('[REDACTED]', $redacted['token']);
+        $this->assertSame('[編集済]', $redacted['token']);
     }
 
     public function testGetIntReturnsDefaultForNonNumericValue(): void
