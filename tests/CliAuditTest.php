@@ -132,7 +132,7 @@ echo "\nTest 6: finish() error_log when Logger class absent\n";
     // The "not loaded" path is tested indirectly by checking the error_log path
     // is present in source (structural test).
     $source = file_get_contents(__DIR__ . '/../src/Support/CliAudit.php');
-    assert_contains("error_log('[hfcm-cli] Audit_Logger class not loaded; audit record skipped')", $source, 'finish() has error_log for missing Logger');
+    assert_contains("error_log('[hfcm-cli] Audit_Logger クラスが読み込まれていません; 監査レコードをスキップ')", $source, 'finish() has error_log for missing Logger');
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +176,7 @@ echo "\nTest 8: json_encode false fallback produces valid JSON\n";
 echo "\nTest 9: start() warns when Logger absent (structural check)\n";
 {
     $source = file_get_contents(__DIR__ . '/../src/Support/CliAudit.php');
-    assert_contains('[hfcm-cli] Warning: HFCM_Takumi_API_Audit_Logger not loaded', $source, 'start() has warning for missing Logger');
+    assert_contains('[hfcm-cli] 警告: HFCM_Takumi_API_Audit_Logger が読み込まれていません; 監査ログは無効です。', $source, 'start() has warning for missing Logger');
 }
 
 // ---------------------------------------------------------------------------
